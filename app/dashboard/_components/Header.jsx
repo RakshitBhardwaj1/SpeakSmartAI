@@ -11,8 +11,8 @@ function Header() {
         console.log(path);
     }, [path])
   return (
-    <div className='flex p-4 items-center justify-between bg-secondary text-secondary-foreground'>
-      <Image src={'/logo.svg'} alt="logo" width={80} height={40}/>
+    <div className='flex p-4 items-center justify-between bg-secondary text-secondary-foreground rounded-lg'>
+      <Image src={'/logo.svg'} alt="logo" width={90} height={80}/>
       <ul className='hidden md:flex gap-4'>
         <li className={`hover:text-primary hover:font-bold transition-colors duration-200 cursor-pointer ${path === '/dashboard' && 'text-primary font-bold'}`}>
           Dashboard
