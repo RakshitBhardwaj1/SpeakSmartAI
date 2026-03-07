@@ -1,3 +1,4 @@
+
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,9 @@ function AddNewInterview() {
   const onSubmit = async (event) => {
     if (event?.preventDefault) event.preventDefault();
 
-    if (!resumeFile) {
-      alert("Please upload a resume file before submitting.");
+    // Validate: either resume OR job details must be provided
+    if (!resumeFile && (!jobPosition && !jobDescription && !skills && !experience)) {
+      alert("Please upload a resume file OR fill in job details (position, description, skills, experience).");
       return;
     }
 
@@ -37,7 +39,7 @@ function AddNewInterview() {
 
     const formData = new FormData();
     
-    formData.append("files", resumeFile); // keep "files"
+    formData.append("files", resumeFile || '');
     formData.append("jobPosition", jobPosition);
     formData.append("jobDescription", jobDescription);
     formData.append("skills", skills);
@@ -45,10 +47,23 @@ function AddNewInterview() {
 
     try {
       const response = await axios.post("/api/generate-interview-questions", formData);
-      console.log("Resume submitted successfully:", response.data);
-      console.log("Interview Questions:", response.data?.interviewQuestions || response.data?.n8nResponse);
+      
+      console.log("✅ Request submitted successfully!");
+      console.log("API Response:", response.data);
+      console.log("Interview Questions:", response.data?.questions || []);
 
-      alert(`Uploaded successfully.\nURL: ${response?.data?.url || "N/A"}`);
+      if(response?.data?.status===429) {
+        alert(" Too Many Requests & No Free Credit Remaining Try Again after 24 hour");
+        return;
+      }
+
+      if (!response?.data?.questionsCount) {
+        console.warn("No questions extracted. Raw n8n response:", response?.data?.n8nResponse);
+      }
+
+      alert(
+        `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`
+      );
       setOpenDialog(false);
       setResumeFile(null);
       setJobPosition("");
@@ -56,8 +71,11 @@ function AddNewInterview() {
       setSkills("");
       setExperience("");
     } catch (error) {
-      console.error("Error submitting resume:", error);
-      alert("Failed to submit resume. Please try again.");
+      console.error("Error submitting request:", error);
+      const serverError = error?.response?.data;
+      alert(
+        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -146,9 +164,9 @@ function AddNewInterview() {
               <Button variant="ghost">Close</Button>
             </DialogClose>
 
-            <Button onClick={onSubmit} disabled={isProcessing || !resumeFile}>
-              {isProcessing ? "Submitting..." : "Submit"}
-            </Button>
+            <Button onClick={onSubmit} disabled={isProcessing || (!resumeFile && !jobPosition && !jobDescription && !skills && !experience)}>
+                {isProcessing ? "Submitting..." : "Submit"}
+             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
