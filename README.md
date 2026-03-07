@@ -36,7 +36,7 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **PostgreSQL** - Relational database (Neon)
 - **Drizzle ORM** - TypeScript ORM for database operations
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 smartspeekai/
@@ -239,7 +239,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 | `N8N_WEBHOOK_URL` | n8n webhook endpoint | Yes |
 | `NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT` | Number of questions to generate | No |
 
-## 🚧 Troubleshooting
+##  Troubleshooting
 
 ### n8n Connection Issues
 If you see `ECONNREFUSED` errors:
@@ -258,7 +258,7 @@ If you see `ECONNREFUSED` errors:
 2. Check Neon database is active
 3. Run `npm run db:push` to sync schema
 
-## 📦 Available Scripts
+## Available Scripts
 
 ```bash
 npm run dev        # Start development server
@@ -273,23 +273,12 @@ npm run db:studio  # Open Drizzle Studio
 
 - [ ] Save generated questions to database
 - [ ] Display interview questions in UI
-- [ ] Mock interview practice mode
+- [ ] Mock interview practice mode with ai agent
 - [ ] Audio/video recording for practice
 - [ ] AI-powered feedback on answers
 - [ ] Interview history and analytics
 - [ ] Share interview preparation links
 
-## 👥 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 🤝 Support
-
-For support, email your-email@example.com or open an issue in the repository.
 
 ---
 
