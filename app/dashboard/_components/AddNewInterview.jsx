@@ -10,12 +10,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
-    DialogClose,
-    DialogSubmit
+  DialogClose,
 } from "@/components/ui/dialog";
 import ResumeUpload from "./ResumeUpload";
+import axios from "axios";
 
 function AddNewInterview() {
   const [openDialog, setOpenDialog] = React.useState(false);
@@ -25,33 +24,49 @@ function AddNewInterview() {
   const [experience, setExperience] = React.useState("");
   const [resumeFile, setResumeFile] = React.useState(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
-  const fileInputRef = React.useRef(null);
 
   const onSubmit = async (event) => {
-    event.preventDefault();
-    console.log(jobPosition, jobDescription, skills, experience);
+    if (event?.preventDefault) event.preventDefault();
 
-    const InputPrompt =
-      "Job Position: " +
-      jobPosition +
-      ", Job Description: " +
-      jobDescription +
-      ", Skills: " +
-      skills +
-      ", Year Of Experience: " +
-      experience +
-      ", Depend on this information please give me " +
-      process.env.NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT +
-      " interview question with answered in JSON formate, Give Question and Answer as field in JSON";
+    if (!resumeFile) {
+      alert("Please upload a resume file before submitting.");
+      return;
+    }
 
-    const result = await generateContent(InputPrompt);
-    console.log(result);
+    setIsProcessing(true);
+
+    const formData = new FormData();
+    
+    formData.append("files", resumeFile); // keep "files"
+    formData.append("jobPosition", jobPosition);
+    formData.append("jobDescription", jobDescription);
+    formData.append("skills", skills);
+    formData.append("experience", experience);
+
+    try {
+      const response = await axios.post("/api/generate-interview-questions", formData);
+      console.log("Resume submitted successfully:", response.data);
+      console.log("Interview Questions:", response.data?.interviewQuestions || response.data?.n8nResponse);
+
+      alert(`Uploaded successfully.\nURL: ${response?.data?.url || "N/A"}`);
+      setOpenDialog(false);
+      setResumeFile(null);
+      setJobPosition("");
+      setJobDescription("");
+      setSkills("");
+      setExperience("");
+    } catch (error) {
+      console.error("Error submitting resume:", error);
+      alert("Failed to submit resume. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
   return (
     <div>
       <div
-        className="p-10 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors duration-200 transform hover:scale-105
-      "
+        className="p-10 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors duration-200 transform hover:scale-105"
         onClick={() => setOpenDialog(true)}
       >
         <h2 className="text-lg text-center">+ Add New</h2>
@@ -64,79 +79,76 @@ function AddNewInterview() {
               Please submit following details.
             </DialogTitle>
             <DialogDescription>
-              <Tabs defaultValue="resume-upload" className="w-full mt-3">
-                <TabsList>
-                  <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
-                  <TabsTrigger value="job-description">
-                    Job Description
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="resume-upload">
-                  <ResumeUpload/>
-                </TabsContent>
-                <TabsContent value="job-description">
-                  <form onSubmit={onSubmit}>
-                    <div>
-                      <h2>
-                        Add Details about job Position/role,Your Skills and
-                        Experience
-                      </h2>
-                      <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
-                        <label>Job Position/Role:</label>
-                        <Input
-                          placeholder="Ex. Software Engineer,Full Stack Developer"
-                          required
-                          value={jobPosition}
-                          onChange={(event) =>
-                            setJobPosition(event.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
-                        <label>Job Description:</label>
-                        <Textarea
-                          placeholder="Describe the job position and responsibilities..."
-                          required
-                          value={jobDescription}
-                          onChange={(event) =>
-                            setJobDescription(event.target.value)
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
-                        <label>Skills:</label>
-                        <Input
-                          placeholder="Ex. JavaScript, React, Node.js"
-                          required
-                          value={skills}
-                          onChange={(event) => setSkills(event.target.value)}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
-                        <label>Year of Experience:</label>
-                        <Input
-                          placeholder="Ex. 2 years"
-                          type="number"
-                          min="0"
-                          max="50"
-                          required
-                          value={experience}
-                          onChange={(event) =>
-                            setExperience(event.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </form>
-                </TabsContent>
-              </Tabs>
+              Upload resume and optionally add job details.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className='flex gap-5 justify-end'>
-            <DialogClose>
-                <Button variant={'ghost'}>Close</Button>
+
+          <Tabs defaultValue="resume-upload" className="w-full mt-3">
+            <TabsList>
+              <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
+              <TabsTrigger value="job-description">Job Description</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="resume-upload">
+              <ResumeUpload setResumeFile={setResumeFile} />
+            </TabsContent>
+
+            <TabsContent value="job-description">
+              <form onSubmit={onSubmit}>
+                <div>
+                  <h2>Add details about role, skills and experience</h2>
+
+                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                    <label>Job Position/Role:</label>
+                    <Input
+                      placeholder="Ex. Software Engineer, Full Stack Developer"
+                      value={jobPosition}
+                      onChange={(event) => setJobPosition(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                    <label>Job Description:</label>
+                    <Textarea
+                      placeholder="Describe the job position and responsibilities..."
+                      value={jobDescription}
+                      onChange={(event) => setJobDescription(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                    <label>Skills:</label>
+                    <Input
+                      placeholder="Ex. JavaScript, React, Node.js"
+                      value={skills}
+                      onChange={(event) => setSkills(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                    <label>Year of Experience:</label>
+                    <Input
+                      placeholder="Ex. 2"
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={experience}
+                      onChange={(event) => setExperience(event.target.value)}
+                    />
+                  </div>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="flex gap-5 justify-end">
+            <DialogClose asChild>
+              <Button variant="ghost">Close</Button>
             </DialogClose>
-            <Button type="submit">Submit</Button>
+
+            <Button onClick={onSubmit} disabled={isProcessing || !resumeFile}>
+              {isProcessing ? "Submitting..." : "Submit"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
