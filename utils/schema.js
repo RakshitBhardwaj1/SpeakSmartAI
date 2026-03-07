@@ -17,7 +17,7 @@ export const InterviewSessionTable = pgTable("interview_sessions", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   mockId: varchar("mock_id").notNull(),
   interviewQuestions: text("interview_questions").notNull(),
-  resumeUrl: text("resume_url").notNull(),
+  resumeUrl: text("resume_url"),
   userId: varchar("user_id").notNull(),
   userEmail: varchar("user_email"),
   jobPosition: varchar("job_position"),

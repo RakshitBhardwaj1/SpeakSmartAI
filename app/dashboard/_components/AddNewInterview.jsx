@@ -28,8 +28,9 @@ function AddNewInterview() {
   const onSubmit = async (event) => {
     if (event?.preventDefault) event.preventDefault();
 
-    if (!resumeFile) {
-      alert("Please upload a resume file before submitting.");
+    // Validate: either resume OR job details must be provided
+    if (!resumeFile && (!jobPosition && !jobDescription && !skills && !experience)) {
+      alert("Please upload a resume file OR fill in job details (position, description, skills, experience).");
       return;
     }
 
@@ -37,7 +38,7 @@ function AddNewInterview() {
 
     const formData = new FormData();
     
-    formData.append("files", resumeFile); // keep "files"
+    formData.append("files", resumeFile || '');
     formData.append("jobPosition", jobPosition);
     formData.append("jobDescription", jobDescription);
     formData.append("skills", skills);
@@ -55,7 +56,7 @@ function AddNewInterview() {
       }
 
       alert(
-        `Uploaded successfully.\nURL: ${response?.data?.resume?.url || "N/A"}\nQuestions: ${response?.data?.questionsCount || 0}`
+        `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`
       );
       setOpenDialog(false);
       setResumeFile(null);
@@ -64,10 +65,10 @@ function AddNewInterview() {
       setSkills("");
       setExperience("");
     } catch (error) {
-      console.error("Error submitting resume:", error);
+      console.error("Error submitting request:", error);
       const serverError = error?.response?.data;
       alert(
-        `Failed to submit resume.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check n8n logs."}`
+        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`
       );
     } finally {
       setIsProcessing(false);
@@ -157,7 +158,7 @@ function AddNewInterview() {
               <Button variant="ghost">Close</Button>
             </DialogClose>
 
-            <Button onClick={onSubmit} disabled={isProcessing || !resumeFile}>
+            <Button onClick={onSubmit} disabled={isProcessing || (!resumeFile && !jobPosition && !jobDescription && !skills && !experience)}>
               {isProcessing ? "Submitting..." : "Submit"}
             </Button>
           </DialogFooter>

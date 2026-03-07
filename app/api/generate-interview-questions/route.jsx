@@ -127,49 +127,65 @@ function normalizeQuestions(n8nData) {
 export async function POST(req) {
   try {
     const { userId } = await auth();
-    const publicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
-    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
-    const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
+    
+    // Extract form data
+    const formData = await req.formData();
+    const file = formData.get("files");
+    const jobPosition = formData.get("jobPosition") || "";
+    const jobDescription = formData.get("jobDescription") || "";
+    const skills = formData.get("skills") || "";
+    const experience = formData.get("experience") || "";
 
-    if (!publicKey || !privateKey || !urlEndpoint) {
+    // Validate: either resume OR job details must be provided
+    if (!file && (!jobPosition && !jobDescription && !skills && !experience)) {
       return new Response(
-        JSON.stringify({ error: "ImageKit environment variables are missing" }),
-        { status: 500 }
+        JSON.stringify({
+          error: "Please provide either a resume file OR job details (position, description, skills, experience)",
+        }),
+        { status: 400 }
       );
     }
 
-    const imagekit = new ImageKit({
-      publicKey,
-      privateKey,
-      urlEndpoint,
-    });
+    let uploadPdf = null;
+    let resumeUrl = null;
+    let safeName = null;
 
-    const formData = await req.formData();
-    const file = formData.get("files");
+    // CASE 1: Resume file provided - upload to ImageKit
+    if (file && typeof file !== "string") {
+      const publicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
+      const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+      const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
 
-    const jobPosition = formData.get("jobPosition");
-    const jobDescription = formData.get("jobDescription");
-    const skills = formData.get("skills");
-    const experience = formData.get("experience");
+      if (!publicKey || !privateKey || !urlEndpoint) {
+        return new Response(
+          JSON.stringify({ error: "ImageKit environment variables are missing" }),
+          { status: 500 }
+        );
+      }
 
-    if (!file || typeof file === "string") {
-      return new Response(JSON.stringify({ error: "No file uploaded" }), {
-        status: 400,
+      const imagekit = new ImageKit({
+        publicKey,
+        privateKey,
+        urlEndpoint,
       });
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      safeName = file.name || `resume-${Date.now()}.pdf`;
+
+      uploadPdf = await imagekit.upload({
+        file: buffer,
+        fileName: `${Date.now()}-${safeName}`,
+        useUniqueFileName: true,
+        folder: "/resumes",
+        isPublished: true,
+      });
+
+      resumeUrl = uploadPdf.url;
+      console.log("✅ Resume uploaded successfully:", resumeUrl);
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const safeName = file.name || `resume-${Date.now()}.pdf`;
-
-    const uploadPdf = await imagekit.upload({
-      file: buffer,
-      fileName: `${Date.now()}-${safeName}`,
-      useUniqueFileName: true,
-      folder: "/resumes",
-      isPublished: true,
-    });
-
+    // Validate n8n webhook URL
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
     if (!n8nWebhookUrl) {
@@ -189,33 +205,39 @@ export async function POST(req) {
       );
     }
 
+    // Build n8n payload based on whether resume exists
     const n8nPayload = {
-      "resume-url": uploadPdf.url,
-      resumeUrl: uploadPdf.url,
-      resume_url: uploadPdf.url,
-      fileName: safeName,
-      mimeType: file.type,
-      jobPosition,
-      jobDescription,
-      skills,
-      experience,
-      useUploadedResume: true,
+      jobPosition: jobPosition || null,
+      jobDescription: jobDescription || null,
+      skills: skills || null,
+      experience: experience || null,
       testMode: false,
       source: "smartspeekai",
     };
 
+    // If resume provided, add resume details
+    if (resumeUrl) {
+      n8nPayload["resume-url"] = resumeUrl;
+      n8nPayload.resumeUrl = resumeUrl;
+      n8nPayload.resume_url = resumeUrl;
+      n8nPayload.fileName = safeName;
+      n8nPayload.mimeType = file?.type || "application/pdf";
+      n8nPayload.useUploadedResume = true;
+    } else {
+      n8nPayload.useUploadedResume = false;
+    }
+
     console.log("Calling n8n webhook:", n8nWebhookUrl);
+    console.log("Source:", resumeUrl ? "Resume File" : "Job Details Only");
     console.log("n8n payload:", JSON.stringify(n8nPayload));
 
-    const n8nRes = await fetch(
-      n8nWebhookUrl,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(n8nPayload),
-        cache: "no-store",
-      }
-    );
+    // Call n8n workflow
+    const n8nRes = await fetch(n8nWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(n8nPayload),
+      cache: "no-store",
+    });
 
     if (!n8nRes.ok) {
       const n8nText = await n8nRes.text();
@@ -253,7 +275,7 @@ export async function POST(req) {
     await db.insert(InterviewSessionTable).values({
       mockId,
       interviewQuestions: JSON.stringify(questions),
-      resumeUrl: uploadPdf.url,
+      resumeUrl: resumeUrl || null,
       userId: userId || "anonymous",
       userEmail: null,
       jobPosition: jobPosition || null,
@@ -277,19 +299,19 @@ export async function POST(req) {
     });
 
     console.log("✅ Data saved to both InterviewSessionTable and SpeakSmartAI tables");
-
     console.log("n8n webhook response:", JSON.stringify(n8nData, null, 2));
     console.log("normalized questions count:", questions.length);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "File uploaded successfully",
-        resume: {
-          url: uploadPdf.url,
-          fileId: uploadPdf.fileId,
+        message: resumeUrl ? "Resume uploaded and analyzed successfully" : "Job details submitted successfully",
+        source: resumeUrl ? "Resume File" : "Job Details Only",
+        resume: resumeUrl ? {
+          url: resumeUrl,
+          fileId: uploadPdf?.fileId,
           fileName: safeName,
-        },
+        } : null,
         request: { jobPosition, jobDescription, skills, experience },
         mockId,
         questions,
@@ -302,7 +324,7 @@ export async function POST(req) {
     console.error("Error in generate-interview-questions:", error);
     return new Response(
       JSON.stringify({
-        error: "Failed to upload file",
+        error: "Failed to process request",
         details: error?.message || "Unknown error",
       }),
       { status: 500 }
