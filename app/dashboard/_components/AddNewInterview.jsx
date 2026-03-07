@@ -45,10 +45,18 @@ function AddNewInterview() {
 
     try {
       const response = await axios.post("/api/generate-interview-questions", formData);
-      console.log("Resume submitted successfully:", response.data);
-      console.log("Interview Questions:", response.data?.interviewQuestions || response.data?.n8nResponse);
+      
+      console.log("✅ Resume and data submitted successfully!");
+      console.log("API Response:", response.data);
+      console.log("Interview Questions:", response.data?.questions || []);
 
-      alert(`Uploaded successfully.\nURL: ${response?.data?.url || "N/A"}`);
+      if (!response?.data?.questionsCount) {
+        console.warn("No questions extracted. Raw n8n response:", response?.data?.n8nResponse);
+      }
+
+      alert(
+        `Uploaded successfully.\nURL: ${response?.data?.resume?.url || "N/A"}\nQuestions: ${response?.data?.questionsCount || 0}`
+      );
       setOpenDialog(false);
       setResumeFile(null);
       setJobPosition("");
@@ -57,7 +65,10 @@ function AddNewInterview() {
       setExperience("");
     } catch (error) {
       console.error("Error submitting resume:", error);
-      alert("Failed to submit resume. Please try again.");
+      const serverError = error?.response?.data;
+      alert(
+        `Failed to submit resume.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check n8n logs."}`
+      );
     } finally {
       setIsProcessing(false);
     }
