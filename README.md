@@ -279,7 +279,3 @@ npm run db:studio  # Open Drizzle Studio
 - [ ] Interview history and analytics
 - [ ] Share interview preparation links
 
-
----
-
-Built with ❤️ using Next.js, n8n, and Google Gemini AI
