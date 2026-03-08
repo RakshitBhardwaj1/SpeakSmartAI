@@ -16,8 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import ResumeUpload from "./ResumeUpload";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 function AddNewInterview() {
+  const router = useRouter();
   const [openDialog, setOpenDialog] = React.useState(false);
   const [jobPosition, setJobPosition] = React.useState("");
   const [jobDescription, setJobDescription] = React.useState("");
@@ -64,6 +66,19 @@ function AddNewInterview() {
       alert(
         `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`
       );
+      const createdMockId = response?.data?.mockId;
+
+      if (createdMockId) {
+        setOpenDialog(false);
+        setResumeFile(null);
+        setJobPosition("");
+        setJobDescription("");
+        setSkills("");
+        setExperience("");
+        router.push(`/dashboard/interview/${createdMockId}`);
+        return;
+      }
+
       setOpenDialog(false);
       setResumeFile(null);
       setJobPosition("");

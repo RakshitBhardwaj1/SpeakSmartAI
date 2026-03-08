@@ -34,6 +34,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",
+    "react-webcam": "^7.2.0",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
