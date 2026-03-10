@@ -10,7 +10,7 @@ const SpeechRecognitionComponent = dynamic(
   { ssr: false }
 )
 
-function RecordAnswerSection() {
+function RecordAnswerSection({ interviewQuestions, activeQuestionIndex }) {
   const [isWebcamOn, setIsWebcamOn] = useState(false)
 
   return (
@@ -37,7 +37,10 @@ function RecordAnswerSection() {
       </button>
     </div>
     
-    <SpeechRecognitionComponent />
+    <SpeechRecognitionComponent 
+      interviewQuestions={interviewQuestions}
+      activeQuestionIndex={activeQuestionIndex}
+    />
     </div>
     
   )
