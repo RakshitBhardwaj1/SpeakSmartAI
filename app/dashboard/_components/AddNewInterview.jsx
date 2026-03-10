@@ -60,7 +60,7 @@ function AddNewInterview() {
       }
 
       if (!response?.data?.questionsCount) {
-        console.warn("No questions extracted. Raw n8n response:", response?.data?.n8nResponse);
+        console.warn("No interview questions were extracted from the provided input.");
       }
 
       alert(
