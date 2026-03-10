@@ -63,7 +63,10 @@ function Start_Interview_Actual({ params }) {
               setActiveQuestionIndex={setActiveQuestionIndex}
             />
             {/* Record Answer */}
-            <RecordAnswerSection/>
+            <RecordAnswerSection
+              interviewQuestions={interviewQuestions} 
+              activeQuestionIndex={activeQuestionIndex}
+            />
         </div>
         
       </div>
