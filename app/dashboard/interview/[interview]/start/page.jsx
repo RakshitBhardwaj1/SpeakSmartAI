@@ -3,9 +3,11 @@ import React, { useEffect } from 'react';
 import { db } from "@/utils/db";
 import { InterviewSessionTable } from "@/utils/schema";
 import { eq } from "drizzle-orm";
-import { WebcamIcon } from "lucide-react";
+import { Lightbulb, WebcamIcon } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 const Webcam = dynamic(() => import('react-webcam'), { ssr: false });
 
@@ -13,7 +15,7 @@ const Webcam = dynamic(() => import('react-webcam'), { ssr: false });
 function StartInterview({ params }) {
     const { interview: interviewId } = React.use(params);
     const [interviewData, setInterviewData] = React.useState(null);
-    const [webCamAllowed, setWebcamAllowed] = React.useState(false);
+    const [webCamEnabled, setWebcamEnabled] = React.useState(false);
     const [loading, setLoading] = React.useState(true);
 
     useEffect(() => {
@@ -40,32 +42,39 @@ function StartInterview({ params }) {
     }, [interviewId]);
 
     return (
-        <div className='my-10 flex justify-center flex-col items-center w-full px-4'>
+        <div className='my-4 flex justify-center flex-col items-center w-full '>
             <h2 className='text-3xl font-bold mb-8'>Let's Start the Interview</h2>
             
             <div className='w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8'>
                 {/* Webcam Section */}
                 <div className='flex flex-col items-center justify-center'>
                     <div className='w-full rounded-lg border overflow-hidden bg-secondary'>
-                        {webCamAllowed ? (
+                        {webCamEnabled ? (
                             <Webcam 
-                                onUserMedia={() => setWebcamAllowed(true)}
-                                onUserMediaError={() => setWebcamAllowed(false)}
+                                onUserMedia={() => setWebcamEnabled(true)}
+                                onUserMediaError={() => setWebcamEnabled(false)}
                                 style={{
                                     height: '100%',
                                     width: '100%'
                                 }}
+                                mirrored={true}
                             />
                         ) : (
-                            <WebcamIcon className='h-80 w-full p-10 text-gray-500 animate-pulse' />
+                            <WebcamIcon className='h-60 w-full p-5 text-gray-500 animate-pulse' />
                         )}
                     </div>
                     <button 
-                        className='mt-5 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition' 
-                        onClick={() => setWebcamAllowed(true)}
+                        variant="ghost"
+                        className='w-full hover:bg-gray-100 mt-4 text-gray-700 rounded-lg py-2 px-4 flex items-center justify-center gap-2' 
+                        onClick={() => setWebcamEnabled(true)}
                     >
                         Allow Webcam and Microphone Access
                     </button>
+                    <div className='flex mt-8 justify-center w-full'>
+                        <Link href={`/dashboard/interview/${interviewId}/start_Interview`} className='w-full'>
+                            <Button className='bg-blue-600 hover:bg-blue-700 text-white w-full'>Start Interview</Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Interview Details Section */}
@@ -112,23 +121,25 @@ function StartInterview({ params }) {
                                         <p className='text-sm text-gray-600'><strong>User_ID</strong></p>
                                         <p className='text-base'>{interviewData?.userId || 'N/A'}</p>
                                     </div>
-                                    <div>
-                                        <p className='text-sm text-gray-600'><strong>Resume</strong></p>
-                                        <p className='text-base whitespace-pre-wrap'>{interviewData?.mockResponse || 'No resume data available'}</p>
-                                    </div>
-                                    <div className='pt-4 border-t'>
-                                        <p className='text-sm text-gray-600'><strong>Interview Duration</strong></p>
-                                        <p className='text-base'>{interviewData?.duration || 'N/A'} minutes</p>
-                                    </div>
                                 </div>
                             </TabsContent>
+
                         </Tabs>
+                        
                     ) : (
                         <div className='bg-gray-50 p-4 rounded-lg text-center text-gray-500'>
                             <p>No interview data found</p>
                         </div>
                     )}
+                    <div className='p-5 border rounded-lg border-yellow-500 mt-6 bg-yellow-100'>
+                        <h2 className='flex gap-2 items-center text-yellow-500'><Lightbulb/><strong>Information</strong></h2>
+                        <h2 className='mt-2 text-yellow-500'>
+                           Enabled webcam and Microphone to Start your interview. It has 10 Questions which you can answer and at the last you will get the report on the basis of your performance your Body Language and Speech Tone. NOTE: We never record your video and audio during the interview. Please ensure you have a stable internet connection for the best experience. 
+                        </h2>
+                    </div>
+                    
                 </div>
+                
             </div>
         </div>
     )
