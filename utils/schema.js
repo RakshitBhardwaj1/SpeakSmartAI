@@ -29,3 +29,14 @@ export const InterviewSessionTable = pgTable("interview_sessions", {
   status: varchar("status"),
 });
 
+export const UserAnswerTable = pgTable("user_answers", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  mockId: varchar("mock_id").notNull(),
+  question: text("question").notNull(),
+  correctanswer: text("correctanswer").notNull(),
+  useranswer: text("useranswer").notNull(),
+  feedback: text("feedback"),
+  rating: integer("rating"),
+  userEmail: varchar("user_email").notNull(),
+  createdAt: varchar("created_at").notNull(),
+});

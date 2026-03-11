@@ -10,8 +10,15 @@ const SpeechRecognitionComponent = dynamic(
   { ssr: false }
 )
 
-function RecordAnswerSection({ interviewQuestions, activeQuestionIndex }) {
+function RecordAnswerSection({ interviewQuestions, activeQuestionIndex, onQuestionChange, mockId }) {
   const [isWebcamOn, setIsWebcamOn] = useState(false)
+
+  const handleNextQuestion = () => {
+    console.log('RecordAnswerSection: Moving to next question from index:', activeQuestionIndex)
+    if (onQuestionChange) {
+      onQuestionChange(activeQuestionIndex + 1)
+    }
+  }
 
   return (
     <div className="flex flex-col justify-center itens-center">
@@ -31,7 +38,7 @@ function RecordAnswerSection({ interviewQuestions, activeQuestionIndex }) {
       )}
       <button 
         onClick={() => setIsWebcamOn(!isWebcamOn)}
-        className='mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg'
+        className='mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition'
       >
         {isWebcamOn ? 'Turn Off Webcam' : 'Turn On Webcam'}
       </button>
@@ -40,6 +47,9 @@ function RecordAnswerSection({ interviewQuestions, activeQuestionIndex }) {
     <SpeechRecognitionComponent 
       interviewQuestions={interviewQuestions}
       activeQuestionIndex={activeQuestionIndex}
+      onNext={handleNextQuestion}
+      mockId={mockId}
+      onQuestionChange={onQuestionChange}
     />
     </div>
     
