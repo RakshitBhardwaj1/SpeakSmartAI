@@ -10,7 +10,7 @@ import { UserAnswerTable } from '@/utils/schema'
 import { useUser } from '@clerk/nextjs'
 import { StopCircle } from 'lucide-react'
 import { and, eq } from 'drizzle-orm'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, onNext = () => {}, mockId: propMockId = '', onQuestionChange = () => {} }) {
   const {
@@ -28,6 +28,7 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
   const [userAnswer, setUserAnswer] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const { user } = useUser()
+  const router = useRouter()
   const lastSyncedAnswerRef = useRef('')
   const prevRecordingRef = useRef(false)
   const isFinalizingRef = useRef(false)
@@ -68,8 +69,9 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     Please provide your response in the following JSON format ONLY (no additional text, no markdown):
     {
       "rating": <number between 1-10>,
-      "feedback": "<3-5 line feedback highlighting areas of improvement, written in a constructive and professional tone>",
-      "strengths": "<mention 1-2 key strengths of the answer>"
+      "feedback": "<3-5 line constructive feedback highlighting areas of improvement>",
+      "strengths": "<mention 1-2 key strengths of the answer>",
+      "modelAnswer": "<a concise ideal model answer to the question, 2-4 sentences>"
     }
 
     Important: Respond ONLY with valid JSON. No markdown code blocks, no extra text.`
@@ -189,6 +191,9 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     if (feedbackResult) {
       basePayload.feedback = JSON.stringify(feedbackResult)
       basePayload.rating = Number(feedbackResult?.rating) || null
+      if (feedbackResult.modelAnswer) {
+        basePayload.correctanswer = feedbackResult.modelAnswer
+      }
     }
 
     if (existing.length > 0) {
@@ -348,12 +353,20 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
           Next Question →
         </Button>
         {activeQuestionIndex === interviewQuestions.length - 1 && (
-          <Link href={`/dashboard/interview/${propMockId}/feedback`} className='bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg'>
-            <Button onClick>
+          <Button
+            disabled={isProcessing}
+            className='bg-gray-700 hover:bg-gray-800 text-white'
+            onClick={async () => {
+              if (isRecording) {
+                stopSpeechToText()
+                await new Promise((resolve) => setTimeout(resolve, 500))
+              }
+              await finalizeCurrentAnswer()
+              router.push(`/dashboard/interview/${propMockId}/feedback`)
+            }}
+          >
             End Interview
           </Button>
-          </Link>
-          
         )}
       </div>
     </div>
