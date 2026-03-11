@@ -66,6 +66,8 @@ function Start_Interview_Actual({ params }) {
             <RecordAnswerSection
               interviewQuestions={interviewQuestions} 
               activeQuestionIndex={activeQuestionIndex}
+              onQuestionChange={setActiveQuestionIndex}
+              mockId={interviewId}
             />
         </div>
         
