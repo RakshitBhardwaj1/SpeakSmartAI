@@ -14,6 +14,9 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **Dashboard Interface** - Clean and intuitive dashboard to manage mock interviews
 - **Responsive Design** - Mobile-friendly UI built with TailwindCSS
 - **Database Integration** - PostgreSQL database with Neon and Drizzle ORM
+- **Save generated questions to database**
+- **Display interview questions in UI**
+- **Audio/video recording for practice**
 
 ## 🛠️ Tech Stack
 
@@ -271,10 +274,6 @@ npm run db:studio  # Open Drizzle Studio
 
 ## 🎯 Upcoming Features
 
-- [ ] Save generated questions to database
-- [ ] Display interview questions in UI
-- [ ] Mock interview practice mode with ai agent
-- [ ] Audio/video recording for practice
 - [ ] AI-powered feedback on answers
 - [ ] Interview history and analytics
 - [ ] Share interview preparation links
