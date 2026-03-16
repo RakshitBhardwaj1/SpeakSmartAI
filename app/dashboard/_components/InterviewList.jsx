@@ -70,8 +70,11 @@ function InterviewList() {
 
   return (
     <div>
-      <h1 className="font-bold text-lg mt-4">Previous Interview List</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
+      <div className='mt-10 flex items-end justify-between gap-3'>
+        <h1 className="text-xl font-bold text-slate-900">Interview Sessions</h1>
+        <p className='text-xs uppercase tracking-[0.16em] text-slate-500'>Recent Activity</p>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {interviewList.length > 0 ? (
           interviewList.map((interview, index) => (
             <InterviewItemCard
@@ -81,7 +84,9 @@ function InterviewList() {
             />
           ))
         ) : (
-          <p className="text-sm text-gray-500">No previous interviews found.</p>
+          <div className='col-span-full rounded-2xl border border-slate-200 bg-white p-8 text-center'>
+            <p className="text-sm text-slate-500">No interview sessions found. Create a new session to begin.</p>
+          </div>
         )}
       </div>
     </div>

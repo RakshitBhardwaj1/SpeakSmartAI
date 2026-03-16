@@ -54,8 +54,8 @@ function Start_Interview_Actual({ params }) {
 
 
   return (
-      <div>
-        <div className='grid grid-cols-1 md:grid-cols-2'>
+      <div className='px-2 py-3 md:px-4'>
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
             {/* Questions */}
             <QuestionsSection 
               interviewQuestions={interviewQuestions} 
