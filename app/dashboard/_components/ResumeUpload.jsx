@@ -16,8 +16,7 @@ function ResumeUpload({ setResumeFile }) {
 
   return (
     <div
-      className="w-full max-w-4xl mx-auto min-h-96 border border-dashed bg-white dark:bg-black border-neutral-200
-      dark:border-neutral-800 rounded-2xl"
+      className="mx-auto min-h-96 w-full max-w-4xl rounded-2xl border border-dashed border-teal-300/70 bg-gradient-to-br from-white to-teal-50/40"
     >
       <FileUpload onChange={handleFileUpload} />
     </div>

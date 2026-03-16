@@ -1,155 +1,128 @@
 "use client";
-import React from 'react'
-import { motion } from 'framer-motion'
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import Header from './dashboard/_components/Header';
-import Link from 'next/link';
+import React from "react";
+import { motion } from "framer-motion";
+import Header from "./dashboard/_components/Header";
+import Link from "next/link";
+import { ArrowRight, AudioLines, BadgeCheck, Sparkles } from "lucide-react";
+
+const featureCards = [
+  {
+    title: "Adaptive AI Interviews",
+    description:
+      "Question sets are generated from your resume and role context so every round feels realistic.",
+    icon: Sparkles,
+  },
+  {
+    title: "Voice + Behavior Insights",
+    description:
+      "Analyze delivery, confidence, and communication flow with instant actionable guidance.",
+    icon: AudioLines,
+  },
+  {
+    title: "Hiring-Grade Reports",
+    description:
+      "Track score evolution question-by-question and prepare with measurable interview readiness.",
+    icon: BadgeCheck,
+  },
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
-      {/* Header Section */}
+    <div className="relative min-h-screen pb-12">
       <Header />
-      
-      {/* Hero Section */}
-      <div
-        className="relative mx-auto my-10 flex max-w-7xl flex-col items-center justify-center">
-        <div
-          className="absolute inset-y-0 left-0 h-full w-px bg-neutral-200/80 dark:bg-neutral-800/80">
-          <div
-            className="absolute top-0 h-40 w-px bg-gradient-to-b from-transparent via-blue-500 to-transparent" />
-        </div>
-        <div
-          className="absolute inset-y-0 right-0 h-full w-px bg-neutral-200/80 dark:bg-neutral-800/80">
-          <div
-            className="absolute h-40 w-px bg-gradient-to-b from-transparent via-blue-500 to-transparent" />
-        </div>
-        <div
-          className="absolute inset-x-0 bottom-0 h-px w-full bg-neutral-200/80 dark:bg-neutral-800/80">
-          <div
-            className="absolute mx-auto h-px w-40 bg-gradient-to-r from-transparent via-blue-500 to-transparent" />
-        </div>
-        <div className="px-4 py-10 md:py-20">
-          <h1
-            className="relative z-10 mx-auto max-w-4xl text-center text-2xl font-bold text-slate-700 md:text-4xl lg:text-7xl dark:text-slate-300">
-            {"Ace Your Interview with AI-Powered Practice"
-              .split(" ")
-              .map((word, index) => (
-                <motion.span
-                  key={index}
-                  initial={{ opacity: 0, filter: "blur(4px)", y: 10 }}
-                  animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: index * 0.1,
-                    ease: "easeInOut",
-                  }}
-                  className="mr-2 inline-block">
-                  {word}
-                </motion.span>
-              ))}
-          </h1>
-          <motion.p
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            transition={{
-              duration: 0.3,
-              delay: 0.8,
-            }}
-            className="relative z-10 mx-auto max-w-xl py-4 text-center text-lg font-normal text-neutral-600 dark:text-neutral-400">
-            Master your interview skills with AI-generated questions tailored to your resume and job role. 
-            Get instant feedback, track your progress, and land your dream job with confidence.
-          </motion.p>
-          <motion.div
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            transition={{
-              duration: 0.3,
-              delay: 1,
-            }}
-            className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/dashboard">
-              <button
-                className="w-60 transform rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl">
-                Explore Now
-              </button>
-            </Link>
-            <Link href="/dashboard">
-              <button
-                className="w-60 transform rounded-lg border-2 border-blue-600 bg-transparent px-6 py-3 font-semibold text-blue-600 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-950/30">
-                Get Started
-              </button>
-            </Link>
-          </motion.div>
+
+      <section className="relative mx-auto mt-8 w-full max-w-7xl px-4 md:px-8">
+        <div className="glass-panel relative overflow-hidden rounded-3xl px-6 py-12 md:px-12 md:py-16">
+          <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-amber-300/25 blur-3xl" />
+          <div className="pointer-events-none absolute -right-14 bottom-10 h-36 w-36 rounded-full bg-cyan-300/30 blur-3xl" />
+
           
-          {/* Features Section */}
+
+          <h1 className="mx-auto max-w-5xl text-center text-4xl font-extrabold leading-tight text-slate-900 sm:text-5xl lg:text-7xl">
+            {"Feedback based on your response analysis".split(" ").map((word, index) => (
+              <motion.span
+                key={index}
+                initial={{ opacity: 0, filter: "blur(6px)", y: 10 }}
+                animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+                transition={{ duration: 0.34, delay: index * 0.07 }}
+                className="mr-3 inline-block"
+              >
+                {index > 1 && index < 5 ? (
+                  <span className="text-gradient-brand">{word}</span>
+                ) : (
+                  word
+                )}
+              </motion.span>
+            ))}
+          </h1>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.42, delay: 0.45 }}
+            className="mx-auto mt-6 max-w-3xl text-center text-base leading-relaxed text-slate-700 md:text-lg"
+          >
+            SmartSpeekAI enhances your preparation with dynamic role-based questions, recorded answer practice, and clear AI-driven feedback reports so your final interview feels familiar, confident, and controlled.
+          </motion.p>
+
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 10,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              duration: 0.3,
-              delay: 1.2,
-            }}
-            className="relative z-10 mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-950/50">
-                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">AI-Powered Questions</h3>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                Get personalized interview questions based on your resume and target job role using advanced AI.
-              </p>
-            </div>
-            
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-lg bg-green-100 p-3 dark:bg-green-950/50">
-                  <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Instant Feedback</h3>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                Receive real-time analysis of your answers with suggestions for improvement and best practices.
-              </p>
-            </div>
-            
-            <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-900">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-lg bg-purple-100 p-3 dark:bg-purple-950/50">
-                  <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Track Progress</h3>
-              </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                Monitor your improvement over time with detailed analytics and performance tracking.
-              </p>
-            </div>
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.65 }}
+            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          >
+            <Link
+              href="/dashboard"
+              className="cta-shine inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-orange-500 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 sm:w-auto"
+            >
+              Launch Dashboard
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white/75 px-7 py-3.5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-700 sm:w-auto"
+            >
+              Start Free Session
+            </Link>
           </motion.div>
+
+          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+            {featureCards.map((card, index) => {
+              const Icon = card.icon;
+              return (
+                <motion.article
+                  key={card.title}
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.8 + index * 0.12 }}
+                  className="premium-card p-6"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/15 to-orange-500/20 text-teal-700">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.description}</p>
+                </motion.article>
+              );
+            })}
+          </div>
         </div>
-      </div>
+
+        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="premium-card p-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Interviews Simulated</p>
+            <p className="mt-2 text-3xl font-extrabold text-slate-900">10k+</p>
+          </div>
+          <div className="premium-card p-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Avg. Confidence Boost</p>
+            <p className="mt-2 text-3xl font-extrabold text-slate-900">41%</p>
+          </div>
+          <div className="premium-card p-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Roles Covered</p>
+            <p className="mt-2 text-3xl font-extrabold text-slate-900">250+</p>
+          </div>
+        </div>
+      </section>
     </div>
-    )
-  }
+  );
+}
