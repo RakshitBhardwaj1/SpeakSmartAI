@@ -262,6 +262,10 @@ export async function POST(req) {
   try {
     const user = await currentUser();
     const { userId } = await auth();
+    const userEmail =
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      null;
     
     // Extract form data
     const formData = await req.formData();
@@ -434,7 +438,7 @@ export async function POST(req) {
       interviewQuestions: JSON.stringify(questions),
       resumeUrl: resumeUrl || null,
       userId: userId || "anonymous",
-      userEmail: null,
+      userEmail,
       jobPosition: jobPosition || null,
       jobDescription: jobDescription || null,
       skills: skills || null,
@@ -452,7 +456,7 @@ export async function POST(req) {
       jobExperience: experience || "0",
       createdBy: userId || "anonymous",
       createdAt: timestamp,
-      userEmail: null,
+      userEmail,
     });
 
     console.log("✅ Data saved to both InterviewSessionTable and SpeakSmartAI tables");
