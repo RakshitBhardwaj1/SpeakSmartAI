@@ -1,9 +1,263 @@
 import ImageKit from "imagekit";
-import { auth } from "@clerk/nextjs/server";
+
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/utils/db";
 import { InterviewSessionTable, SpeakSmartAI } from "@/utils/schema";
 
-export const runtime = "nodejs";
+function normalizeQuestions(n8nData) {
+  const cleanQuestionText = (value) => {
+    if (!value) return "";
+
+    return String(value)
+      .replace(/^\s*(\d+\.|[-*])\s*/, "")
+      .replace(/^\s*(question\s*\d*\s*[:.-])\s*/i, "")
+      .trim();
+  };
+
+  const isLikelyQuestion = (value) => {
+    if (!value) return false;
+
+    const text = String(value).trim();
+    const lowered = text.toLowerCase();
+
+    // Minimum length check
+    if (text.length < 10) return false;
+
+    // Exclude JSON syntax and structure
+    if (/^["\[{}\],:]/.test(text) || /^["}\],]+$/.test(text)) {
+      return false;
+    }
+    
+    // Exclude lines that are JSON key-value pairs (not actual questions)
+    if (/^"[^"]+"\s*:\s*"[^"]*"[,}]?$/.test(text)) {
+      return false;
+    }
+    if (/^"[^"]+"\s*:\s*\[/.test(text)) {
+      return false;
+    }
+    if (/^"[^"]+",?\s*$/.test(text) && !/\?/.test(text)) {
+      return false;
+    }
+
+    // Exclude obvious non-question content (answers, metadata)
+    if (/^(answer|sample answer|ideal answer|correct answer|expected answer|model answer)\s*[:.-]/i.test(text)) {
+      return false;
+    }
+    if (/^(job\s*(title|position|role|details|description)|company|skills|experience|qualifications|requirements)\s*[:.-]/i.test(text)) {
+      return false;
+    }
+    if (/"?(answer|job_position|job_description|skills_assumed|experience_level|job_title)"?\s*:/i.test(text)) {
+      return false;
+    }
+
+    // Accept anything else that's reasonably substantive
+    return true;
+  };
+
+  const toQuestionItem = (value, index) => {
+    const cleaned = cleanQuestionText(value);
+    if (!isLikelyQuestion(cleaned)) return null;
+
+    return {
+      id: index + 1,
+      question: cleaned,
+      category: "general",
+    };
+  };
+
+  const mapQuestionList = (list) =>
+    list
+      .map((item, index) => {
+        if (typeof item === "string") {
+          return toQuestionItem(item, index);
+        }
+
+        if (!item || typeof item !== "object") return null;
+
+        const explicitQuestion =
+          item?.question ||
+          item?.interviewQuestion ||
+          item?.text ||
+          item?.prompt ||
+          item?.content ||
+          item?.title;
+
+        const fallbackQuestion =
+          Object.entries(item).find(([key]) => /question/i.test(key))?.[1] || "";
+
+        return toQuestionItem(explicitQuestion || fallbackQuestion, index);
+      })
+      .filter(Boolean);
+
+  const tryParseJson = (value) => {
+    if (typeof value !== "string") return null;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const withoutFences = trimmed
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+
+    try {
+      return JSON.parse(withoutFences);
+    } catch {
+      return null;
+    }
+  };
+
+  const unwrap = (value) => {
+    if (Array.isArray(value) && value.length === 1 && value[0]?.json) {
+      return value[0].json;
+    }
+
+    return value;
+  };
+
+  const parseTextQuestions = (text) => {
+    if (typeof text !== "string" || !text.trim()) return [];
+
+    // First try to parse as JSON
+    const parsedJson = tryParseJson(text);
+    if (parsedJson) {
+      // If it has a questions array, extract from there
+      if (Array.isArray(parsedJson?.questions)) {
+        return parsedJson.questions
+          .map((item, index) => {
+            const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
+            if (!questionText) return null;
+            
+            return {
+              id: index + 1,
+              question: cleanQuestionText(questionText),
+              category: item?.category || "general",
+            };
+          })
+          .filter((item) => item && item.question.length > 0);
+      }
+      
+      // If it's an array, use standard mapping
+      if (Array.isArray(parsedJson)) {
+        return mapQuestionList(parsedJson);
+      }
+    }
+
+    // Fallback: parse as plain text lines
+    return text
+      .split(/\r?\n/)
+      .map((line) => cleanQuestionText(line))
+      .filter((line) => isLikelyQuestion(line))
+      .map((question, index) => ({ id: index + 1, question, category: "general" }));
+  };
+
+  const source = unwrap(n8nData);
+
+  // Handle Gemini-like payload: { content: { parts: [{ text: "[...]" }] } }
+  const partsText = source?.content?.parts
+    ?.map((part) => part?.text)
+    .filter(Boolean)
+    .join("\n");
+
+  // Try to parse parts text as JSON first
+  const parsedFromParts = tryParseJson(partsText);
+  if (parsedFromParts) {
+    // Check if it has a questions array with question/answer pairs
+    if (Array.isArray(parsedFromParts?.questions)) {
+      const extractedQuestions = parsedFromParts.questions
+        .map((item, index) => {
+          const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
+          if (!questionText) return null;
+          
+          return {
+            id: index + 1,
+            question: cleanQuestionText(questionText),
+            category: item?.category || "general",
+          };
+        })
+        .filter((item) => item && item.question.length > 0);
+      
+      if (extractedQuestions.length > 0) {
+        return extractedQuestions;
+      }
+    }
+    
+    // If it's just an array of questions
+    if (Array.isArray(parsedFromParts)) {
+      return mapQuestionList(parsedFromParts);
+    }
+  }
+
+  // Try direct questions array access
+  const explicitList = [
+    source?.questions,
+    source?.interviewQuestions,
+    source?.data?.questions,
+    source?.data?.interviewQuestions,
+    source?.result?.questions,
+    source?.output?.questions,
+    Array.isArray(source) ? source : null,
+  ].find((item) => Array.isArray(item));
+
+  if (explicitList) {
+    // Check if it's an array of question/answer objects
+    const hasQuestionField = explicitList.some((item) => 
+      item && typeof item === "object" && (item.question || item.interviewQuestion)
+    );
+    
+    if (hasQuestionField) {
+      const extractedQuestions = explicitList
+        .map((item, index) => {
+          if (typeof item === "string") {
+            return { id: index + 1, question: cleanQuestionText(item), category: "general" };
+          }
+          
+          const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
+          if (!questionText) return null;
+          
+          return {
+            id: index + 1,
+            question: cleanQuestionText(questionText),
+            category: item?.category || "general",
+          };
+        })
+        .filter((item) => item && item.question.length > 0);
+      
+      if (extractedQuestions.length > 0) {
+        return extractedQuestions;
+      }
+    }
+    
+    return mapQuestionList(explicitList);
+  }
+
+  // Handle question1/question2/... style objects.
+  const numberedQuestions = Object.keys(source || {})
+    .filter((key) => /^question\d+$/i.test(key))
+    .sort((a, b) => Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, "")))
+    .map((key, index) => ({
+      id: index + 1,
+      question: cleanQuestionText(source[key]),
+      category: "general",
+    }))
+    .filter((item) => isLikelyQuestion(item.question));
+
+  if (numberedQuestions.length > 0) {
+    return numberedQuestions;
+  }
+
+  // Last resort: try to parse as text (but this should rarely be needed now)
+  const textSource =
+    partsText ||
+    source?.outputText ||
+    source?.output ||
+    source?.result ||
+    source?.message ||
+    source?.raw;
+
+  return parseTextQuestions(textSource);
+}
 
 function normalizeQuestions(n8nData) {
   const tryParseJson = (value) => {
@@ -126,7 +380,13 @@ function normalizeQuestions(n8nData) {
 
 export async function POST(req) {
   try {
+    const user = await currentUser();
     const { userId } = await auth();
+    const userEmail =
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      null;
+
     
     // Extract form data
     const formData = await req.formData();
@@ -135,6 +395,8 @@ export async function POST(req) {
     const jobDescription = formData.get("jobDescription") || "";
     const skills = formData.get("skills") || "";
     const experience = formData.get("experience") || "";
+
+    
 
     // Validate: either resume OR job details must be provided
     if (!file && (!jobPosition && !jobDescription && !skills && !experience)) {
@@ -232,12 +494,32 @@ export async function POST(req) {
     console.log("n8n payload:", JSON.stringify(n8nPayload));
 
     // Call n8n workflow
-    const n8nRes = await fetch(n8nWebhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(n8nPayload),
-      cache: "no-store",
-    });
+    let n8nRes;
+    try {
+      n8nRes = await fetch(n8nWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(n8nPayload),
+        cache: "no-store",
+        timeout: 30000,
+      });
+    } catch (fetchError) {
+      console.error("❌ n8n webhook connection failed:", {
+        url: n8nWebhookUrl,
+        error: fetchError?.message,
+        code: fetchError?.code,
+      });
+
+      return new Response(
+        JSON.stringify({
+          error: "Failed to connect to n8n workflow",
+          message: `Cannot reach n8n at ${n8nWebhookUrl}. Make sure n8n is running.`,
+          details: fetchError?.message,
+          code: fetchError?.code,
+        }),
+        { status: 503 }
+      );
+    }
 
     if (!n8nRes.ok) {
       const n8nText = await n8nRes.text();
@@ -277,7 +559,8 @@ export async function POST(req) {
       interviewQuestions: JSON.stringify(questions),
       resumeUrl: resumeUrl || null,
       userId: userId || "anonymous",
-      userEmail: null,
+
+      userEmail,
       jobPosition: jobPosition || null,
       jobDescription: jobDescription || null,
       skills: skills || null,
@@ -295,7 +578,8 @@ export async function POST(req) {
       jobExperience: experience || "0",
       createdBy: userId || "anonymous",
       createdAt: timestamp,
-      userEmail: null,
+      userEmail,
+
     });
 
     console.log("✅ Data saved to both InterviewSessionTable and SpeakSmartAI tables");
@@ -317,6 +601,7 @@ export async function POST(req) {
         questions,
         questionsCount: questions.length,
         n8nResponse: n8nData,
+
       }),
       { status: 200 }
     );
