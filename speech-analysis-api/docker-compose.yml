@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  speech-api:
+    build: .
+    container_name: speech-analysis-api
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - WHISPER_MODEL=base
+      - LANGUAGE=vi
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - speech-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  speech-network:
+    driver: bridge
