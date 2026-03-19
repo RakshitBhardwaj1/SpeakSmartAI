@@ -17,6 +17,8 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **Save generated questions to database**
 - **Display interview questions in UI**
 - **Audio/video recording for practice**
+- **6-Day Interview Commitment** - After first login, users are tracked for a mandatory 6-day interview streak
+- **Missed-Day Email Alerts** - Users receive an email reminder when a required interview day is skipped
 
 ## 🛠️ Tech Stack
 
@@ -126,6 +128,13 @@ IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
 
 # N8N Webhook
 N8N_WEBHOOK_URL=https://your-n8n-url.com/webhook/generate-interview-questions
+
+# Streak Email Notifications (Resend)
+RESEND_API_KEY=your_resend_api_key
+STREAK_ALERT_FROM_EMAIL=alerts@your-domain.com
+
+# Cron Security Key (used by /api/interview-streak/check-missed)
+STREAK_CRON_SECRET=your_long_random_secret
 ```
 
 ### Step 4: Setup Database
@@ -241,6 +250,16 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 | `IMAGEKIT_PRIVATE_KEY` | ImageKit private key | Yes |
 | `N8N_WEBHOOK_URL` | n8n webhook endpoint | Yes |
 | `NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT` | Number of questions to generate | No |
+| `RESEND_API_KEY` | Resend API key for missed-day emails | Yes (for email alerts) |
+| `STREAK_ALERT_FROM_EMAIL` | Sender email for streak alerts | Yes (for email alerts) |
+| `STREAK_CRON_SECRET` | Secret header value for daily streak check API | Yes (for cron) |
+
+## ⏰ Daily Missed-Day Check
+
+To send missed-day emails even when users do not log in, run this endpoint once per day from a cron service:
+
+- `POST /api/interview-streak/check-missed`
+- Include header: `x-cron-secret: <STREAK_CRON_SECRET>`
 
 ##  Troubleshooting
 

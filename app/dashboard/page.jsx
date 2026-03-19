@@ -8,9 +8,48 @@ import { useUser } from '@clerk/nextjs'
 function Dashboard() {
   const { user } = useUser()
   const username = user?.firstName || user?.username || 'there'
+  const [streak, setStreak] = React.useState(null)
+
+  React.useEffect(() => {
+    if (!user?.id) return
+
+    const initializeStreak = async () => {
+      try {
+        const response = await fetch('/api/interview-streak/login', {
+          method: 'POST',
+          cache: 'no-store',
+        })
+
+        if (!response.ok) {
+          return
+        }
+
+        const data = await response.json()
+        setStreak(data?.streak || null)
+      } catch (error) {
+        console.error('Failed to initialize interview streak:', error)
+      }
+    }
+
+    initializeStreak()
+  }, [user?.id])
 
   return (
     <div className='space-y-8'>
+      {streak?.isActive && (
+        <div className='rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900'>
+          <h2 className='text-sm font-semibold uppercase tracking-wide'>6-Day Interview Commitment</h2>
+          <p className='mt-2 text-sm'>
+            {streak.completedToday
+              ? 'Today\'s interview is completed. Keep going tomorrow.'
+              : 'Today\'s interview is pending. You must complete one interview today.'}
+          </p>
+          <p className='mt-1 text-xs text-amber-800'>
+            Completed days: {streak.daysCompleted}/6. End date: {streak.streakEndDate}
+          </p>
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className='rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8'>
         <div className='mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600'>

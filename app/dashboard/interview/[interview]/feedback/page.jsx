@@ -21,6 +21,7 @@ function Feedback({ params }) {
   const [sessionQuestions, setSessionQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openIndex, setOpenIndex] = useState(null);
+  const completionMarkedRef = React.useRef(false);
 
   useEffect(() => {
     if (interviewId) {
@@ -89,6 +90,34 @@ function Feedback({ params }) {
       return { feedback: feedbackStr };
     }
   };
+
+  useEffect(() => {
+    if (completionMarkedRef.current) return;
+    if (!feedbackList.length) return;
+
+    const hasAnsweredAtLeastOne = feedbackList.some(
+      (item) => item?.useranswer && item.useranswer !== "N/A",
+    );
+
+    if (!hasAnsweredAtLeastOne) return;
+
+    const markCompletion = async () => {
+      try {
+        const response = await fetch("/api/interview-streak/complete", {
+          method: "POST",
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          completionMarkedRef.current = true;
+        }
+      } catch (error) {
+        console.error("Failed to mark interview streak completion:", error);
+      }
+    };
+
+    markCompletion();
+  }, [feedbackList]);
 
   if (loading) {
     return (
