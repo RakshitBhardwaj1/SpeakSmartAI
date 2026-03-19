@@ -1,0 +1,96 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { db } from "@/utils/db";
+import { InterviewSessionTable, SpeakSmartAI, UserAnswerTable } from "@/utils/schema";
+import { and, desc, eq } from "drizzle-orm";
+import InterviewItemCard from "./InterviewItemCard";
+
+function InterviewList() {
+  const { user } = useUser();
+  const [interviewList, setInterviewList] = useState([]);
+
+  useEffect(() => {
+    if (user?.id) {
+      getInterviewList();
+    }
+  }, [user?.id]);
+
+  const getInterviewList = async () => {
+    try {
+      const result = await db
+        .select()
+        .from(InterviewSessionTable)
+        .where(eq(InterviewSessionTable.userId, user.id))
+        .orderBy(desc(InterviewSessionTable.createdAt));
+
+      setInterviewList(result || []);
+    } catch (error) {
+      console.error("Failed to load interview list:", error);
+      setInterviewList([]);
+    }
+  };
+
+  const handleDeleteInterview = async (interview) => {
+    if (!interview?.mockId || !user?.id) return;
+
+    const isConfirmed = window.confirm(
+      "Delete this interview? This will remove interview details, answers, and feedback permanently."
+    );
+
+    if (!isConfirmed) return;
+
+    try {
+      await db
+        .delete(UserAnswerTable)
+        .where(eq(UserAnswerTable.mockId, interview.mockId));
+
+      await db
+        .delete(SpeakSmartAI)
+        .where(eq(SpeakSmartAI.mockId, interview.mockId));
+
+      await db
+        .delete(InterviewSessionTable)
+        .where(
+          and(
+            eq(InterviewSessionTable.mockId, interview.mockId),
+            eq(InterviewSessionTable.userId, user.id)
+          )
+        );
+
+      setInterviewList((prev) =>
+        prev.filter((item) => item.mockId !== interview.mockId)
+      );
+    } catch (error) {
+      console.error("Failed to delete interview:", error);
+      alert("Failed to delete interview. Please try again.");
+    }
+  };
+
+  return (
+    <div>
+      <div className='mt-10 flex items-end justify-between gap-3'>
+        <h1 className="text-xl font-bold text-slate-900">Interview Sessions</h1>
+        <p className='text-xs uppercase tracking-[0.16em] text-slate-500'>Recent Activity</p>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {interviewList.length > 0 ? (
+          interviewList.map((interview, index) => (
+            <InterviewItemCard
+              key={interview.id ?? index}
+              interview={interview}
+              onDelete={handleDeleteInterview}
+            />
+          ))
+        ) : (
+          <div className='col-span-full rounded-2xl border border-slate-200 bg-white p-8 text-center'>
+            <p className="text-sm text-slate-500">No interview sessions found. Create a new session to begin.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default InterviewList;

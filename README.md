@@ -14,6 +14,14 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **Dashboard Interface** - Clean and intuitive dashboard to manage mock interviews
 - **Responsive Design** - Mobile-friendly UI built with TailwindCSS
 - **Database Integration** - PostgreSQL database with Neon and Drizzle ORM
+<<<<<<< HEAD
+=======
+- **Save generated questions to database**
+- **Display interview questions in UI**
+- **Audio/video recording for practice**
+- **6-Day Interview Commitment** - After first login, users are tracked for a mandatory 6-day interview streak
+- **Missed-Day Email Alerts** - Users receive an email reminder when a required interview day is skipped
+>>>>>>> frontend_RakshitBhardwaj1
 
 ## 🛠️ Tech Stack
 
@@ -36,7 +44,11 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **PostgreSQL** - Relational database (Neon)
 - **Drizzle ORM** - TypeScript ORM for database operations
 
+<<<<<<< HEAD
 ## 📁 Project Structure
+=======
+## Project Structure
+>>>>>>> frontend_RakshitBhardwaj1
 
 ```
 smartspeekai/
@@ -123,6 +135,13 @@ IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
 
 # N8N Webhook
 N8N_WEBHOOK_URL=https://your-n8n-url.com/webhook/generate-interview-questions
+
+# Streak Email Notifications (Resend)
+RESEND_API_KEY=your_resend_api_key
+STREAK_ALERT_FROM_EMAIL=alerts@your-domain.com
+
+# Cron Security Key (used by /api/interview-streak/check-missed)
+STREAK_CRON_SECRET=your_long_random_secret
 ```
 
 ### Step 4: Setup Database
@@ -179,6 +198,9 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
      - Job metadata
    - Frontend logs questions to console
    - User receives success confirmation
+<img width="1659" height="319" alt="image" src="https://github.com/user-attachments/assets/cb19409d-5020-4277-b84a-470e42eae80e" />
+
+
 
 ## 🔑 Key Components
 
@@ -235,8 +257,18 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 | `IMAGEKIT_PRIVATE_KEY` | ImageKit private key | Yes |
 | `N8N_WEBHOOK_URL` | n8n webhook endpoint | Yes |
 | `NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT` | Number of questions to generate | No |
+| `RESEND_API_KEY` | Resend API key for missed-day emails | Yes (for email alerts) |
+| `STREAK_ALERT_FROM_EMAIL` | Sender email for streak alerts | Yes (for email alerts) |
+| `STREAK_CRON_SECRET` | Secret header value for daily streak check API | Yes (for cron) |
 
-## 🚧 Troubleshooting
+## ⏰ Daily Missed-Day Check
+
+To send missed-day emails even when users do not log in, run this endpoint once per day from a cron service:
+
+- `POST /api/interview-streak/check-missed`
+- Include header: `x-cron-secret: <STREAK_CRON_SECRET>`
+
+##  Troubleshooting
 
 ### n8n Connection Issues
 If you see `ECONNREFUSED` errors:
@@ -255,7 +287,7 @@ If you see `ECONNREFUSED` errors:
 2. Check Neon database is active
 3. Run `npm run db:push` to sync schema
 
-## 📦 Available Scripts
+## Available Scripts
 
 ```bash
 npm run dev        # Start development server
@@ -268,26 +300,7 @@ npm run db:studio  # Open Drizzle Studio
 
 ## 🎯 Upcoming Features
 
-- [ ] Save generated questions to database
-- [ ] Display interview questions in UI
-- [ ] Mock interview practice mode
-- [ ] Audio/video recording for practice
 - [ ] AI-powered feedback on answers
 - [ ] Interview history and analytics
 - [ ] Share interview preparation links
 
-## 👥 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 🤝 Support
-
-For support, email your-email@example.com or open an issue in the repository.
-
----
-
-Built with ❤️ using Next.js, n8n, and Google Gemini AI

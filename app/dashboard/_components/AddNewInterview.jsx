@@ -15,8 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import ResumeUpload from "./ResumeUpload";
 import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 
 function AddNewInterview() {
+  const router = useRouter();
   const [openDialog, setOpenDialog] = React.useState(false);
   const [jobPosition, setJobPosition] = React.useState("");
   const [jobDescription, setJobDescription] = React.useState("");
@@ -29,22 +32,24 @@ function AddNewInterview() {
     if (event?.preventDefault) event.preventDefault();
 
     // Validate: either resume OR job details must be provided
+
     if (!resumeFile && (!jobPosition && !jobDescription && !skills && !experience)) {
       alert("Please upload a resume file OR fill in job details (position, description, skills, experience).");
+
       return;
     }
 
     setIsProcessing(true);
 
     const formData = new FormData();
-    
-    formData.append("files", resumeFile || '');
+  formData.append("files", resumeFile || "");
     formData.append("jobPosition", jobPosition);
     formData.append("jobDescription", jobDescription);
     formData.append("skills", skills);
     formData.append("experience", experience);
 
     try {
+
       const response = await axios.post("/api/generate-interview-questions", formData);
       
       console.log("✅ Resume and data submitted successfully!");
@@ -58,6 +63,19 @@ function AddNewInterview() {
       alert(
         `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`
       );
+      const createdMockId = response?.data?.mockId;
+
+      if (createdMockId) {
+        setOpenDialog(false);
+        setResumeFile(null);
+        setJobPosition("");
+        setJobDescription("");
+        setSkills("");
+        setExperience("");
+        router.push(`/dashboard/interview/${createdMockId}/start`);
+        return;
+      }
+
       setOpenDialog(false);
       setResumeFile(null);
       setJobPosition("");
@@ -68,7 +86,9 @@ function AddNewInterview() {
       console.error("Error submitting request:", error);
       const serverError = error?.response?.data;
       alert(
+
         `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`
+
       );
     } finally {
       setIsProcessing(false);
@@ -78,25 +98,33 @@ function AddNewInterview() {
   return (
     <div>
       <div
-        className="p-10 border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors duration-200 transform hover:scale-105"
+        className="group relative flex min-h-[220px] w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-10 text-center transition-all duration-200 hover:border-slate-400 hover:shadow-md md:min-h-[240px]"
         onClick={() => setOpenDialog(true)}
       >
-        <h2 className="text-lg text-center">+ Add New</h2>
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:text-white">
+          <Plus className="h-8 w-8 transition-transform duration-200 group-hover:rotate-90" />
+        </div>
+        <h2 className="mt-4 text-2xl font-semibold text-slate-900 transition-colors group-hover:text-slate-900 md:text-3xl">
+          Create New Interview
+        </h2>
+        <p className="mt-2 text-sm text-slate-500 md:text-base">
+          Start a new AI-generated session
+        </p>
       </div>
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="min-h-2xl max-w-2xl">
+        <DialogContent className="max-w-2xl rounded-2xl border-slate-200/60 bg-white/95 shadow-2xl backdrop-blur-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
               Please submit following details.
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-600">
               Upload resume and optionally add job details.
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="resume-upload" className="w-full mt-3">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-2 rounded-xl bg-slate-100/90">
               <TabsTrigger value="resume-upload">Resume Upload</TabsTrigger>
               <TabsTrigger value="job-description">Job Description</TabsTrigger>
             </TabsList>
@@ -108,9 +136,11 @@ function AddNewInterview() {
             <TabsContent value="job-description">
               <form onSubmit={onSubmit}>
                 <div>
-                  <h2>Add details about role, skills and experience</h2>
+                  <h2 className="pt-2 text-sm font-medium text-slate-700">
+                    Add details about role, skills and experience
+                  </h2>
 
-                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                  <div className="mx-5 my-5 mt-5 flex flex-col gap-2">
                     <label>Job Position/Role:</label>
                     <Input
                       placeholder="Ex. Software Engineer, Full Stack Developer"
@@ -119,16 +149,18 @@ function AddNewInterview() {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                  <div className="mx-5 my-5 mt-5 flex flex-col gap-2">
                     <label>Job Description:</label>
                     <Textarea
                       placeholder="Describe the job position and responsibilities..."
                       value={jobDescription}
-                      onChange={(event) => setJobDescription(event.target.value)}
+                      onChange={(event) =>
+                        setJobDescription(event.target.value)
+                      }
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                  <div className="mx-5 my-5 mt-5 flex flex-col gap-2">
                     <label>Skills:</label>
                     <Input
                       placeholder="Ex. JavaScript, React, Node.js"
@@ -137,7 +169,7 @@ function AddNewInterview() {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2 mt-5 mx-5 my-5">
+                  <div className="mx-5 my-5 mt-5 flex flex-col gap-2">
                     <label>Year of Experience:</label>
                     <Input
                       placeholder="Ex. 2"
@@ -153,12 +185,23 @@ function AddNewInterview() {
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="flex gap-5 justify-end">
+          <DialogFooter className="flex justify-end gap-3">
             <DialogClose asChild>
               <Button variant="ghost">Close</Button>
             </DialogClose>
 
-            <Button onClick={onSubmit} disabled={isProcessing || (!resumeFile && !jobPosition && !jobDescription && !skills && !experience)}>
+            <Button
+              className="bg-slate-900 text-white hover:bg-slate-800"
+              onClick={onSubmit}
+              disabled={
+                isProcessing ||
+                (!resumeFile &&
+                  !jobPosition &&
+                  !jobDescription &&
+                  !skills &&
+                  !experience)
+              }
+            >
               {isProcessing ? "Submitting..." : "Submit"}
             </Button>
           </DialogFooter>
