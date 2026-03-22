@@ -14,11 +14,14 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **Dashboard Interface** - Clean and intuitive dashboard to manage mock interviews
 - **Responsive Design** - Mobile-friendly UI built with TailwindCSS
 - **Database Integration** - PostgreSQL database with Neon and Drizzle ORM
+<<<<<<< HEAD
+=======
 - **Save generated questions to database**
 - **Display interview questions in UI**
 - **Audio/video recording for practice**
 - **6-Day Interview Commitment** - After first login, users are tracked for a mandatory 6-day interview streak
 - **Missed-Day Email Alerts** - Users receive an email reminder when a required interview day is skipped
+>>>>>>> frontend_RakshitBhardwaj1
 
 ## 🛠️ Tech Stack
 
@@ -41,7 +44,11 @@ SmartSpeakAI is an intelligent interview preparation platform that generates cus
 - **PostgreSQL** - Relational database (Neon)
 - **Drizzle ORM** - TypeScript ORM for database operations
 
+<<<<<<< HEAD
+## 📁 Project Structure
+=======
 ## Project Structure
+>>>>>>> frontend_RakshitBhardwaj1
 
 ```
 smartspeekai/

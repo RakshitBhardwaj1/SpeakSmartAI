@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import { motion } from "framer-motion";
 import Header from "./dashboard/_components/Header";
@@ -123,6 +124,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
     </div>
-  );
-}
+    )
+  }

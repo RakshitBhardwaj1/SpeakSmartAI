@@ -1,4 +1,5 @@
 import ImageKit from "imagekit";
+
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/utils/db";
 import { InterviewSessionTable, SpeakSmartAI } from "@/utils/schema";
@@ -258,6 +259,125 @@ function normalizeQuestions(n8nData) {
   return parseTextQuestions(textSource);
 }
 
+function normalizeQuestions(n8nData) {
+  const tryParseJson = (value) => {
+    if (typeof value !== "string") return null;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const withoutFences = trimmed
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+
+    try {
+      return JSON.parse(withoutFences);
+    } catch {
+      return null;
+    }
+  };
+
+  const unwrap = (value) => {
+    if (Array.isArray(value) && value.length === 1 && value[0]?.json) {
+      return value[0].json;
+    }
+
+    return value;
+  };
+
+  const parseTextQuestions = (text) => {
+    if (typeof text !== "string" || !text.trim()) return [];
+
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^\s*(\d+\.|[-*])\s*/, "").trim())
+      .filter((line) => line.length > 15)
+      .map((question, index) => ({
+        id: index + 1,
+        question,
+        category: "general",
+      }));
+  };
+
+  const source = unwrap(n8nData);
+
+  // Handle Gemini-like payload: { content: { parts: [{ text: "[...]" }] } }
+  const partsText = source?.content?.parts
+    ?.map((part) => part?.text)
+    .filter(Boolean)
+    .join("\n");
+
+  const parsedFromParts = tryParseJson(partsText);
+  if (Array.isArray(parsedFromParts)) {
+    return parsedFromParts
+      .map((item, index) => {
+        if (typeof item === "string") {
+          return { id: index + 1, question: item, category: "general" };
+        }
+
+        return {
+          id: index + 1,
+          question: item?.question || item?.text || item?.prompt || item?.content || "",
+          category: item?.category || "general",
+        };
+      })
+      .filter((item) => item.question);
+  }
+
+  const explicitList = [
+    source?.questions,
+    source?.interviewQuestions,
+    source?.data?.questions,
+    source?.data?.interviewQuestions,
+    source?.result?.questions,
+    source?.output?.questions,
+    Array.isArray(source) ? source : null,
+  ].find((item) => Array.isArray(item));
+
+  if (explicitList) {
+    return explicitList
+      .map((item, index) => {
+        if (typeof item === "string") {
+          return { id: index + 1, question: item, category: "general" };
+        }
+
+        return {
+          id: index + 1,
+          question: item?.question || item?.text || item?.prompt || item?.content || "",
+          category: item?.category || "general",
+        };
+      })
+      .filter((item) => item.question);
+  }
+
+  // Handle question1/question2/... style objects.
+  const numberedQuestions = Object.keys(source || {})
+    .filter((key) => /^question\d+$/i.test(key))
+    .sort((a, b) => Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, "")))
+    .map((key, index) => ({
+      id: index + 1,
+      question: String(source[key] || "").trim(),
+      category: "general",
+    }))
+    .filter((item) => item.question);
+
+  if (numberedQuestions.length > 0) {
+    return numberedQuestions;
+  }
+
+  const textSource =
+    partsText ||
+    source?.outputText ||
+    source?.output ||
+    source?.result ||
+    source?.message ||
+    source?.raw;
+
+  return parseTextQuestions(textSource);
+}
+
 export async function POST(req) {
   try {
     const user = await currentUser();
@@ -266,6 +386,7 @@ export async function POST(req) {
       user?.primaryEmailAddress?.emailAddress ||
       user?.emailAddresses?.[0]?.emailAddress ||
       null;
+
     
     // Extract form data
     const formData = await req.formData();
@@ -438,6 +559,7 @@ export async function POST(req) {
       interviewQuestions: JSON.stringify(questions),
       resumeUrl: resumeUrl || null,
       userId: userId || "anonymous",
+
       userEmail,
       jobPosition: jobPosition || null,
       jobDescription: jobDescription || null,
@@ -457,6 +579,7 @@ export async function POST(req) {
       createdBy: userId || "anonymous",
       createdAt: timestamp,
       userEmail,
+
     });
 
     console.log("✅ Data saved to both InterviewSessionTable and SpeakSmartAI tables");
@@ -473,9 +596,12 @@ export async function POST(req) {
           fileId: uploadPdf?.fileId,
           fileName: safeName,
         } : null,
+        request: { jobPosition, jobDescription, skills, experience },
         mockId,
         questions,
         questionsCount: questions.length,
+        n8nResponse: n8nData,
+
       }),
       { status: 200 }
     );
