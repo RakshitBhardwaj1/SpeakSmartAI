@@ -6,6 +6,7 @@ import { BriefcaseBusiness, Sparkles } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 
 function Dashboard() {
+
   const { user } = useUser()
   const username = user?.firstName || user?.username || 'there'
   const [streak, setStreak] = React.useState(null)

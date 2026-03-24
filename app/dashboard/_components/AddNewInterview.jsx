@@ -32,54 +32,36 @@ function AddNewInterview() {
     if (event?.preventDefault) event.preventDefault();
 
     // Validate: either resume OR job details must be provided
-    if (
-      !resumeFile &&
-      !jobPosition &&
-      !jobDescription &&
-      !skills &&
-      !experience
-    ) {
-      alert(
-        "Please upload a resume file OR fill in job details (position, description, skills, experience).",
-      );
+
+    if (!resumeFile && (!jobPosition && !jobDescription && !skills && !experience)) {
+      alert("Please upload a resume file OR fill in job details (position, description, skills, experience).");
+
       return;
     }
 
     setIsProcessing(true);
 
     const formData = new FormData();
-
-    formData.append("files", resumeFile || "");
+  formData.append("files", resumeFile || "");
     formData.append("jobPosition", jobPosition);
     formData.append("jobDescription", jobDescription);
     formData.append("skills", skills);
     formData.append("experience", experience);
 
     try {
-      const response = await axios.post(
-        "/api/generate-interview-questions",
-        formData,
-      );
 
-      console.log("✅ Request submitted successfully!");
+      const response = await axios.post("/api/generate-interview-questions", formData);
+      
+      console.log("✅ Resume and data submitted successfully!");
       console.log("API Response:", response.data);
       console.log("Interview Questions:", response.data?.questions || []);
 
-      if (response?.data?.status === 429) {
-        alert(
-          " Too Many Requests & No Free Credit Remaining Try Again after 24 hour",
-        );
-        return;
-      }
-
       if (!response?.data?.questionsCount) {
-        console.warn(
-          "No interview questions were extracted from the provided input.",
-        );
+        console.warn("No questions extracted. Raw n8n response:", response?.data?.n8nResponse);
       }
 
       alert(
-        `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`,
+        `✅ Success!\nQuestions Generated: ${response?.data?.questionsCount || 0}\nSource: ${response?.data?.source || "Processing..."}`
       );
       const createdMockId = response?.data?.mockId;
 
@@ -104,7 +86,9 @@ function AddNewInterview() {
       console.error("Error submitting request:", error);
       const serverError = error?.response?.data;
       alert(
-        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`,
+
+        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`
+
       );
     } finally {
       setIsProcessing(false);
