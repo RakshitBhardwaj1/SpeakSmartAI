@@ -4,76 +4,49 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/utils/db";
 import { InterviewSessionTable, SpeakSmartAI } from "@/utils/schema";
 
+
+function cleanQuestionText(value) {
+  if (!value) return "";
+  return String(value)
+    .replace(/^\s*(\d+\.|[-*])\s*/, "")
+    .replace(/^\s*(question\s*\d*\s*[:.-])\s*/i, "")
+    .trim();
+}
+
+function isLikelyQuestion(value) {
+  if (!value) return false;
+  const text = String(value).trim();
+  const lowered = text.toLowerCase();
+  if (text.length < 10) return false;
+  if (/^["\[{}\],:]/.test(text) || /^["}\],]+$/.test(text)) return false;
+  if (/^"[^"]+"\s*:\s*"[^"]*"[,}]?$/.test(text)) return false;
+  if (/^"[^"]+"\s*:\s*\[/.test(text)) return false;
+  if (/^"[^"]+",?\s*$/.test(text) && !/\?/.test(text)) return false;
+  if (/^(answer|sample answer|ideal answer|correct answer|expected answer|model answer)\s*[:.-]/i.test(text)) return false;
+  if (/^(job\s*(title|position|role|details|description)|company|skills|experience|qualifications|requirements)\s*[:.-]/i.test(text)) return false;
+  if (/"?(answer|job_position|job_description|skills_assumed|experience_level|job_title)"?\s*:/i.test(text)) return false;
+  return true;
+}
+
+
 function normalizeQuestions(n8nData) {
-  const cleanQuestionText = (value) => {
-    if (!value) return "";
-
-    return String(value)
-      .replace(/^\s*(\d+\.|[-*])\s*/, "")
-      .replace(/^\s*(question\s*\d*\s*[:.-])\s*/i, "")
-      .trim();
-  };
-
-  const isLikelyQuestion = (value) => {
-    if (!value) return false;
-
-    const text = String(value).trim();
-    const lowered = text.toLowerCase();
-
-    // Minimum length check
-    if (text.length < 10) return false;
-
-    // Exclude JSON syntax and structure
-    if (/^["\[{}\],:]/.test(text) || /^["}\],]+$/.test(text)) {
-      return false;
-    }
-    
-    // Exclude lines that are JSON key-value pairs (not actual questions)
-    if (/^"[^"]+"\s*:\s*"[^"]*"[,}]?$/.test(text)) {
-      return false;
-    }
-    if (/^"[^"]+"\s*:\s*\[/.test(text)) {
-      return false;
-    }
-    if (/^"[^"]+",?\s*$/.test(text) && !/\?/.test(text)) {
-      return false;
-    }
-
-    // Exclude obvious non-question content (answers, metadata)
-    if (/^(answer|sample answer|ideal answer|correct answer|expected answer|model answer)\s*[:.-]/i.test(text)) {
-      return false;
-    }
-    if (/^(job\s*(title|position|role|details|description)|company|skills|experience|qualifications|requirements)\s*[:.-]/i.test(text)) {
-      return false;
-    }
-    if (/"?(answer|job_position|job_description|skills_assumed|experience_level|job_title)"?\s*:/i.test(text)) {
-      return false;
-    }
-
-    // Accept anything else that's reasonably substantive
-    return true;
-  };
-
-  const toQuestionItem = (value, index) => {
+  function toQuestionItem(value, index) {
     const cleaned = cleanQuestionText(value);
     if (!isLikelyQuestion(cleaned)) return null;
-
     return {
       id: index + 1,
       question: cleaned,
       category: "general",
     };
-  };
+  }
 
-  const mapQuestionList = (list) =>
-    list
+  function mapQuestionList(list) {
+    return list
       .map((item, index) => {
         if (typeof item === "string") {
           return toQuestionItem(item, index);
         }
-
         if (!item || typeof item !== "object") return null;
-
         const explicitQuestion =
           item?.question ||
           item?.interviewQuestion ||
@@ -81,44 +54,38 @@ function normalizeQuestions(n8nData) {
           item?.prompt ||
           item?.content ||
           item?.title;
-
         const fallbackQuestion =
           Object.entries(item).find(([key]) => /question/i.test(key))?.[1] || "";
-
         return toQuestionItem(explicitQuestion || fallbackQuestion, index);
       })
       .filter(Boolean);
+  }
 
-  const tryParseJson = (value) => {
+  function tryParseJson(value) {
     if (typeof value !== "string") return null;
-
     const trimmed = value.trim();
     if (!trimmed) return null;
-
     const withoutFences = trimmed
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
       .replace(/\s*```$/, "")
       .trim();
-
     try {
       return JSON.parse(withoutFences);
     } catch {
       return null;
     }
-  };
+  }
 
-  const unwrap = (value) => {
+  function unwrap(value) {
     if (Array.isArray(value) && value.length === 1 && value[0]?.json) {
       return value[0].json;
     }
-
     return value;
-  };
+  }
 
-  const parseTextQuestions = (text) => {
+  function parseTextQuestions(text) {
     if (typeof text !== "string" || !text.trim()) return [];
-
     // First try to parse as JSON
     const parsedJson = tryParseJson(text);
     if (parsedJson) {
@@ -128,7 +95,6 @@ function normalizeQuestions(n8nData) {
           .map((item, index) => {
             const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
             if (!questionText) return null;
-            
             return {
               id: index + 1,
               question: cleanQuestionText(questionText),
@@ -137,29 +103,25 @@ function normalizeQuestions(n8nData) {
           })
           .filter((item) => item && item.question.length > 0);
       }
-      
       // If it's an array, use standard mapping
       if (Array.isArray(parsedJson)) {
         return mapQuestionList(parsedJson);
       }
     }
-
     // Fallback: parse as plain text lines
     return text
       .split(/\r?\n/)
       .map((line) => cleanQuestionText(line))
       .filter((line) => isLikelyQuestion(line))
       .map((question, index) => ({ id: index + 1, question, category: "general" }));
-  };
+  }
 
   const source = unwrap(n8nData);
-
   // Handle Gemini-like payload: { content: { parts: [{ text: "[...]" }] } }
   const partsText = source?.content?.parts
     ?.map((part) => part?.text)
     .filter(Boolean)
     .join("\n");
-
   // Try to parse parts text as JSON first
   const parsedFromParts = tryParseJson(partsText);
   if (parsedFromParts) {
@@ -169,7 +131,6 @@ function normalizeQuestions(n8nData) {
         .map((item, index) => {
           const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
           if (!questionText) return null;
-          
           return {
             id: index + 1,
             question: cleanQuestionText(questionText),
@@ -177,18 +138,15 @@ function normalizeQuestions(n8nData) {
           };
         })
         .filter((item) => item && item.question.length > 0);
-      
       if (extractedQuestions.length > 0) {
         return extractedQuestions;
       }
     }
-    
     // If it's just an array of questions
     if (Array.isArray(parsedFromParts)) {
       return mapQuestionList(parsedFromParts);
     }
   }
-
   // Try direct questions array access
   const explicitList = [
     source?.questions,
@@ -199,23 +157,19 @@ function normalizeQuestions(n8nData) {
     source?.output?.questions,
     Array.isArray(source) ? source : null,
   ].find((item) => Array.isArray(item));
-
   if (explicitList) {
     // Check if it's an array of question/answer objects
-    const hasQuestionField = explicitList.some((item) => 
+    const hasQuestionField = explicitList.some((item) =>
       item && typeof item === "object" && (item.question || item.interviewQuestion)
     );
-    
     if (hasQuestionField) {
       const extractedQuestions = explicitList
         .map((item, index) => {
           if (typeof item === "string") {
             return { id: index + 1, question: cleanQuestionText(item), category: "general" };
           }
-          
           const questionText = item?.question || item?.interviewQuestion || item?.text || item?.prompt;
           if (!questionText) return null;
-          
           return {
             id: index + 1,
             question: cleanQuestionText(questionText),
@@ -223,15 +177,12 @@ function normalizeQuestions(n8nData) {
           };
         })
         .filter((item) => item && item.question.length > 0);
-      
       if (extractedQuestions.length > 0) {
         return extractedQuestions;
       }
     }
-    
     return mapQuestionList(explicitList);
   }
-
   // Handle question1/question2/... style objects.
   const numberedQuestions = Object.keys(source || {})
     .filter((key) => /^question\d+$/i.test(key))
@@ -242,11 +193,9 @@ function normalizeQuestions(n8nData) {
       category: "general",
     }))
     .filter((item) => isLikelyQuestion(item.question));
-
   if (numberedQuestions.length > 0) {
     return numberedQuestions;
   }
-
   // Last resort: try to parse as text (but this should rarely be needed now)
   const textSource =
     partsText ||
@@ -255,128 +204,9 @@ function normalizeQuestions(n8nData) {
     source?.result ||
     source?.message ||
     source?.raw;
-
   return parseTextQuestions(textSource);
 }
 
-function normalizeQuestions(n8nData) {
-  const tryParseJson = (value) => {
-    if (typeof value !== "string") return null;
-
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-
-    const withoutFences = trimmed
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/, "")
-      .trim();
-
-    try {
-      return JSON.parse(withoutFences);
-    } catch {
-      return null;
-    }
-  };
-
-  const unwrap = (value) => {
-    if (Array.isArray(value) && value.length === 1 && value[0]?.json) {
-      return value[0].json;
-    }
-
-    return value;
-  };
-
-  const parseTextQuestions = (text) => {
-    if (typeof text !== "string" || !text.trim()) return [];
-
-    return text
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^\s*(\d+\.|[-*])\s*/, "").trim())
-      .filter((line) => line.length > 15)
-      .map((question, index) => ({
-        id: index + 1,
-        question,
-        category: "general",
-      }));
-  };
-
-  const source = unwrap(n8nData);
-
-  // Handle Gemini-like payload: { content: { parts: [{ text: "[...]" }] } }
-  const partsText = source?.content?.parts
-    ?.map((part) => part?.text)
-    .filter(Boolean)
-    .join("\n");
-
-  const parsedFromParts = tryParseJson(partsText);
-  if (Array.isArray(parsedFromParts)) {
-    return parsedFromParts
-      .map((item, index) => {
-        if (typeof item === "string") {
-          return { id: index + 1, question: item, category: "general" };
-        }
-
-        return {
-          id: index + 1,
-          question: item?.question || item?.text || item?.prompt || item?.content || "",
-          category: item?.category || "general",
-        };
-      })
-      .filter((item) => item.question);
-  }
-
-  const explicitList = [
-    source?.questions,
-    source?.interviewQuestions,
-    source?.data?.questions,
-    source?.data?.interviewQuestions,
-    source?.result?.questions,
-    source?.output?.questions,
-    Array.isArray(source) ? source : null,
-  ].find((item) => Array.isArray(item));
-
-  if (explicitList) {
-    return explicitList
-      .map((item, index) => {
-        if (typeof item === "string") {
-          return { id: index + 1, question: item, category: "general" };
-        }
-
-        return {
-          id: index + 1,
-          question: item?.question || item?.text || item?.prompt || item?.content || "",
-          category: item?.category || "general",
-        };
-      })
-      .filter((item) => item.question);
-  }
-
-  // Handle question1/question2/... style objects.
-  const numberedQuestions = Object.keys(source || {})
-    .filter((key) => /^question\d+$/i.test(key))
-    .sort((a, b) => Number(a.replace(/\D/g, "")) - Number(b.replace(/\D/g, "")))
-    .map((key, index) => ({
-      id: index + 1,
-      question: String(source[key] || "").trim(),
-      category: "general",
-    }))
-    .filter((item) => item.question);
-
-  if (numberedQuestions.length > 0) {
-    return numberedQuestions;
-  }
-
-  const textSource =
-    partsText ||
-    source?.outputText ||
-    source?.output ||
-    source?.result ||
-    source?.message ||
-    source?.raw;
-
-  return parseTextQuestions(textSource);
-}
 
 export async function POST(req) {
   try {
