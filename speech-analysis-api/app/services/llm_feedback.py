@@ -1,4 +1,4 @@
-import google.generativeai as genai
+import google.genai as genai
 import json
 from typing import Dict, Any
 
@@ -9,28 +9,25 @@ class LLMFeedbackService:
     def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
         self.api_key = api_key
         self.model_name = model_name
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel(model_name)
+        self.client = genai.Client(api_key=api_key)
+        self.model = self.client.get_model(model_name)
     
     def generate_feedback(self, transcript: str, report_card: Dict[str, Any]) -> str:
         """Generate coaching feedback using LLM"""
-        
-        # Get dimensions and find strengths/weaknesses
-        dimension_scores = {
-            "Pacing": report_card["pacing"]["score"],
-            "Expressiveness": report_card["expressiveness"]["score"],
-            "Clarity": report_card["clarity"]["score"]
-        }
-        
-        primary_strength_key = max(dimension_scores, key=dimension_scores.get)
-        primary_weakness_key = min(dimension_scores, key=dimension_scores.get)
-        
-        # Confidence check
-        confidence_score = report_card.get("confidence", 1.0)
-        confidence_warning = "⚠️ NOTE: The audio sample is very short. Phrase your feedback as preliminary observations." if confidence_score < 0.5 else ""
-        
-        # Build the prompt
-        prompt = f"""
+        try:
+            # Get dimensions and find strengths/weaknesses
+            dimension_scores = {
+                "Pacing": report_card["pacing"]["score"],
+                "Expressiveness": report_card["expressiveness"]["score"],
+                "Clarity": report_card["clarity"]["score"]
+            }
+            primary_strength_key = max(dimension_scores, key=dimension_scores.get)
+            primary_weakness_key = min(dimension_scores, key=dimension_scores.get)
+            # Confidence check
+            confidence_score = report_card.get("confidence", 1.0)
+            confidence_warning = "⚠️ NOTE: The audio sample is very short. Phrase your feedback as preliminary observations." if confidence_score < 0.5 else ""
+            # Build the prompt
+            prompt = f"""
 You are an elite, empathetic executive speech coach.
 
 You MUST base your feedback ONLY on the data provided below. 
@@ -39,9 +36,7 @@ Do NOT invent numbers, traits, or metrics not present in the report.
 {confidence_warning}
 
 === TRANSCRIPT (quoted user speech) ===
-\"\"\"
 {transcript}
-\"\"\"
 
 === PROSODY REPORT CARD (JSON) ===
 {json.dumps(report_card, indent=2)}
@@ -71,8 +66,15 @@ Explain the real-world impact of this specific weakness based on the data.
 ### 🏋️ The Actionable Drill
 Provide ONE specific, concrete physical or vocal drill to improve that exact focus area.
 """
-        
-        print("Generating LLM feedback...")
-        response = self.model.generate_content(prompt)
-        
-        return response.text
+            print("Generating LLM feedback...")
+            response = self.model.generate_content([prompt])
+            # google.genai returns a response object with .candidates[0].text or .text
+            if hasattr(response, "candidates") and response.candidates:
+                return response.candidates[0].text
+            elif hasattr(response, "text"):
+                return response.text
+            else:
+                return "[LLM feedback could not be generated: No response text]"
+        except Exception as e:
+            print(f"Error generating LLM feedback: {e}")
+            return f"[LLM feedback error: {e}]"
