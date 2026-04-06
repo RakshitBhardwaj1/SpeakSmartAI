@@ -91,6 +91,31 @@ function Feedback({ params }) {
     }
   };
 
+  const formatFeedbackText = (text) => {
+    if (!text) return null;
+    return text.split('\n').map((line, i) => {
+      let formattedLine = line;
+      let isHeading = false;
+      if (formattedLine.startsWith('### ')) {
+        formattedLine = formattedLine.replace('### ', '');
+        isHeading = true;
+      }
+      // Very simple bold Markdown parsing
+      const parts = formattedLine.split(/(\*\*.*?\*\*)/g);
+      
+      return (
+        <span key={i} className={isHeading ? "font-bold block mt-3 mb-1 text-slate-800" : (formattedLine.trim() === "" ? "block h-1" : "block mb-1")}>
+          {parts.map((part, index) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={index} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          })}
+        </span>
+      );
+    });
+  };
+
   useEffect(() => {
     if (completionMarkedRef.current) return;
     if (!feedbackList.length) return;
@@ -281,9 +306,9 @@ function Feedback({ params }) {
                         {parsed.feedback && (
                           <div>
                             <p className="mb-1 font-semibold text-blue-600">AI Feedback</p>
-                            <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 leading-relaxed text-slate-700">
-                              {parsed.feedback}
-                            </p>
+                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 leading-relaxed text-slate-700">
+                              {formatFeedbackText(parsed.feedback)}
+                            </div>
                           </div>
                         )}
                         {parsed.strengths && (
@@ -291,6 +316,22 @@ function Feedback({ params }) {
                             <p className="mb-1 font-semibold text-purple-600">Strengths</p>
                             <p className="rounded-lg border border-purple-200 bg-purple-50 p-3 leading-relaxed text-slate-700">
                               {parsed.strengths}
+                            </p>
+                          </div>
+                        )}
+                        {parsed.speechFeedback && (
+                          <div>
+                            <p className="mb-1 font-semibold text-orange-600">Speech & Tone Analysis</p>
+                            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 leading-relaxed text-slate-700">
+                              {formatFeedbackText(parsed.speechFeedback)}
+                            </div>
+                          </div>
+                        )}
+                        {parsed.speechMetrics && (
+                          <div>
+                            <p className="mb-1 font-semibold text-teal-600">Speech Performance Metrics</p>
+                            <p className="rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-slate-700">
+                              {parsed.speechMetrics}
                             </p>
                           </div>
                         )}
