@@ -23,7 +23,13 @@ class Settings(BaseSettings):
     
     # LLM Configuration
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    llm_model: str = "gemini-2.0-flash-lite"
+    llm_model: str = "gemini-2.0-flash"  # Primary model
+    fallback_llm_models: list = [
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-3-flash-preview"
+    ]
     
     # Whisper Configuration
     whisper_model: str = "base"
