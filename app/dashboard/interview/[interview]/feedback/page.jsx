@@ -335,6 +335,30 @@ function Feedback({ params }) {
                             </p>
                           </div>
                         )}
+                        {parsed.detailedAnalysis?.graphs && (
+                          <div className="mt-6">
+                            <p className="mb-3 flex items-center gap-2 font-bold text-slate-800">
+                              <span className="text-xl">📈</span> Analysis Graphs
+                            </p>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                              {Object.entries(parsed.detailedAnalysis.graphs).map(([name, base64], i) => (
+                                <div key={i} className="group overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-sm transition-all hover:shadow-md">
+                                  <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-slate-50">
+                                    <img 
+                                      src={`data:image/png;base64,${base64}`} 
+                                      alt={name}
+                                      className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/5" />
+                                  </div>
+                                  <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    {name.replace(/_/g, ' ')}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </>
                     );
                   })()}
