@@ -16,6 +16,7 @@ SmartSpeakAI is an intelligent interview preparation platform that combines AI-g
 - **Async Speech Processing Pipeline** - Non-blocking job-based backend processing with job IDs and result polling
 - **Input Validation & Data Sanity** - Strict backend schema validation, type checks, format checks, and upload constraints
 - **Automated Backend Test Coverage** - Authentication, authorization, validation, async job flow, and failure paths
+- **Monitoring & Observability** - Prometheus metrics endpoint, custom job metrics, and Grafana-ready dashboards
 - **Interview Commitment Tracking** - 6-day streak monitoring and missed-day email reminders
 - **Responsive UI** - Mobile-friendly app experience with TailwindCSS + shadcn/ui
 
@@ -35,6 +36,7 @@ SmartSpeakAI is an intelligent interview preparation platform that combines AI-g
 - **Clerk JWT Verification** - Backend auth enforcement for protected endpoints
 - **Google Gemini AI** - Text feedback generation
 - **Whisper + Audio Metrics** - Transcription and prosody analysis
+- **Prometheus + Grafana** - Metrics collection and dashboard visualization
 - **n8n** - Workflow automation for interview question generation
 
 ### Database & Storage
@@ -59,11 +61,15 @@ SpeakSmartAI/
 │   │   ├── core/auth.py                # Clerk JWT verification and role checks
 │   │   ├── core/config.py              # Service configuration and limits
 │   │   ├── models/analysis.py          # Strict request/response schemas
-│   │   └── services/job_store.py       # Persistent async job storage
+│   │   └── services/
+│   │       ├── job_store.py            # Persistent async job storage
+│   │       └── metrics.py              # Custom Prometheus job metrics
+│   ├── observability/                  # Prometheus scrape config
 │   ├── tests/                          # Backend test suite
 │   └── main.py                         # FastAPI app startup
 ├── AUTHENTICATION_AUTHORIZATION_FIX.md
-└── ASYNC_AUDIO_PIPELINE_IMPLEMENTATION_DOC.md
+├── ASYNC_AUDIO_PIPELINE_IMPLEMENTATION_DOC.md
+└── MONITORING_OBSERVABILITY_DOC.md
 ```
 
 ## 🔧 Installation & Setup
@@ -168,6 +174,21 @@ cd speech-analysis-api
 python -m pytest -q tests
 ```
 
+## 📈 Monitoring & Observability
+
+Speech analysis API now exposes Prometheus metrics at `/metrics`.
+
+Tracked custom job metrics:
+- `jobs_total`
+- `jobs_failed`
+- `job_duration_seconds`
+
+Observability setup guide:
+- `MONITORING_OBSERVABILITY_DOC.md`
+
+Prometheus scrape config:
+- `speech-analysis-api/observability/prometheus.yml`
+
 ## 📊 Core Data Models
 
 ### App Database (PostgreSQL)
@@ -223,6 +244,6 @@ npm run db:studio  # Open Drizzle Studio
 
 - [ ] Production worker queue for high-throughput background jobs
 - [ ] API rate limiting and abuse controls
-- [ ] Structured observability and alerting for job failures
+- [ ] Alerting thresholds and incident playbooks for job failures
 - [ ] Enhanced feedback analytics dashboard
 
