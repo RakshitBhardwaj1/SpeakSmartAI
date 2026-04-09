@@ -4,6 +4,7 @@ import os
 import tempfile
 from app.core.config import settings
 from app.core.auth import AuthenticatedUser, get_current_user, require_admin
+from app.models.analysis import UploadRequest
 from app.services.analysis import SpeechAnalysisService
 
 
@@ -11,6 +12,19 @@ router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 
 # Initialize service
 analysis_service = SpeechAnalysisService()
+
+ALLOWED_AUDIO_EXTENSIONS = (".wav", ".mp3", ".webm", ".m4a")
+ALLOWED_AUDIO_CONTENT_TYPES = {
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/webm",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/aac",
+}
 
 
 async def _analyze_audio_file(file: UploadFile):
@@ -25,15 +39,28 @@ async def _analyze_audio_file(file: UploadFile):
     - graphs: Base64 encoded analysis graphs
     """
     
-    # Validate file
-    if not file.filename:
+    # Validate and normalize filename
+    raw_filename = file.filename or ""
+    normalized_filename = os.path.basename(raw_filename.strip().lower())
+
+    if not normalized_filename:
         raise HTTPException(status_code=400, detail="No file provided")
-    
-    if not file.content_type.startswith('audio/'):
+
+    if len(normalized_filename) > settings.max_filename_length:
+        raise HTTPException(status_code=400, detail="Filename is too long")
+
+    if not normalized_filename.endswith(ALLOWED_AUDIO_EXTENSIONS):
+        raise HTTPException(status_code=400, detail="Invalid audio format")
+
+    content_type = (file.content_type or "").strip().lower()
+    if content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="File must be audio format")
-    
+
     # Check file size
     content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file is not allowed")
+
     if len(content) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail=f"File too large. Max size: {settings.max_upload_size / 1024 / 1024}MB")
     
@@ -87,6 +114,19 @@ async def upload_audio(
     """Alias for analyze route kept for compatibility with upload semantics."""
     _ = user
     return await _analyze_audio_file(file)
+
+
+@router.post("/upload-url")
+async def upload_audio_url(
+    data: UploadRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Validate and normalize URL input for audio uploads."""
+    _ = user
+    return {
+        "status": "accepted",
+        "file_url": data.file_url,
+    }
 
 
 @router.get("/user-data")

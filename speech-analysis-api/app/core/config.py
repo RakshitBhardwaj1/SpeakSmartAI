@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     admin_emails_csv: str = os.getenv("ADMIN_EMAILS", "")
     
     # File Upload Configuration
-    max_upload_size: int = 50 * 1024 * 1024  # 50MB
+    max_upload_size: int = 10 * 1024 * 1024  # 10MB
     upload_directory: str = "./uploads"
+    max_filename_length: int = 255
     
     # Audio Processing
     sample_rate: int = 16000

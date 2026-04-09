@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 from typing import Optional, List, Dict, Any
 
 
@@ -32,9 +32,31 @@ class AnalysisResponse(BaseModel):
 
 class AudioUploadRequest(BaseModel):
     """Audio upload request metadata"""
-    filename: str
-    file_size: int
+    filename: str = Field(min_length=1, max_length=255)
+    file_size: int = Field(gt=0)
     duration_estimate: Optional[float] = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if not normalized.endswith((".mp3", ".wav", ".webm", ".m4a")):
+            raise ValueError("Invalid audio format")
+        return normalized
+
+
+class UploadRequest(BaseModel):
+    """Strict request schema for URL-based upload submission."""
+
+    file_url: HttpUrl = Field(max_length=2048)
+
+    @field_validator("file_url")
+    @classmethod
+    def validate_audio_url(cls, value: HttpUrl) -> str:
+        normalized = str(value).strip().lower()
+        if not normalized.endswith((".mp3", ".wav", ".webm", ".m4a")):
+            raise ValueError("Invalid audio format")
+        return normalized
 
 
 class FeedbackRequest(BaseModel):
