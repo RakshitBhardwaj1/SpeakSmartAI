@@ -82,6 +82,8 @@ Authorization: Bearer <clerk_jwt>
 Protected endpoints:
 - `POST /api/v1/analyze`
 - `POST /api/v1/upload`
+- `GET /api/v1/result/{job_id}`
+- `POST /api/v1/upload-url`
 - `GET /api/v1/user-data`
 - `GET /api/v1/admin/audit` (admin only)
 
@@ -90,7 +92,7 @@ Failure behavior:
 - Invalid token/signature: `401`
 - Authenticated but insufficient permission: `403`
 
-### Analyze Audio
+### Submit Audio Job
 
 **Endpoint:** `POST /api/v1/analyze`
 
@@ -102,49 +104,41 @@ curl -X POST "http://localhost:8000/api/v1/analyze" \
   -F "file=@your_audio.wav"
 ```
 
-**Response:**
+**Response (Immediate):**
 ```json
 {
-  "status": "success",
-  "data": {
+  "job_id": "4a2cb59d-f02b-4519-b56b-0f451cf9984f",
+  "status": "processing"
+}
+```
+
+### Get Job Result
+
+**Endpoint:** `GET /api/v1/result/{job_id}`
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/result/<job_id>" \
+  -H "Authorization: Bearer <clerk_jwt>"
+```
+
+**Response While Processing:**
+```json
+{
+  "job_id": "4a2cb59d-f02b-4519-b56b-0f451cf9984f",
+  "status": "processing"
+}
+```
+
+**Response After Completion:**
+```json
+{
+  "job_id": "4a2cb59d-f02b-4519-b56b-0f451cf9984f",
+  "status": "completed",
+  "result": {
     "transcript": "Full transcribed text from audio",
     "duration": 22.5,
     "report_card": {
-      "overall_score": 75,
-      "confidence": 1.0,
-      "pacing": {
-        "score": 78,
-        "wpm": 142.3,
-        "speech_ratio": 0.78,
-        "avg_breath_group_sec": 5.8
-      },
-      "expressiveness": {
-        "score": 72,
-        "relative_pitch_range": 0.45,
-        "stress_density": 0.65
-      },
-      "clarity": {
-        "score": 76,
-        "content_emphasis_ratio": 0.82,
-        "function_reduction_ratio": 0.80
-      }
-    },
-    "pauses": [
-      {
-        "start_time": 2.34,
-        "end_time": 2.89,
-        "duration": 0.55,
-        "label": "short",
-        "context_before": "audience",
-        "context_after": "the"
-      }
-    ],
-    "feedback": "### 🌟 The Hook\nYour pacing demonstrates strong control...",
-    "graphs": {
-      "vad_analysis": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "pause_detection": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "pause_classification": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-      "report_card": "data:image/png;base64,iVBORw0KGgoAAAANS..."
+      "overall_score": 75
     }
   }
 }

@@ -33,6 +33,7 @@ wheels/
 .coverage
 htmlcov/
 uploads/
+data/*.db
 logs/
 *.log
 .cache/

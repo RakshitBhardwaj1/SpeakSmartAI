@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     max_upload_size: int = 10 * 1024 * 1024  # 10MB
     upload_directory: str = "./uploads"
     max_filename_length: int = 255
+    processing_upload_directory: str = "./uploads/processing"
+
+    # Async Job Configuration
+    jobs_db_path: str = "./data/jobs.db"
     
     # Audio Processing
     sample_rate: int = 16000

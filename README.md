@@ -1,306 +1,228 @@
-# SmartSpeakAI - AI-Powered Interview Question Generator
+# SmartSpeakAI - AI-Powered Interview Preparation Platform
 
-SmartSpeakAI is an intelligent interview preparation platform that generates customized interview questions using AI. Upload your resume and job details, and get AI-generated interview questions tailored to your specific role.
+SmartSpeakAI is an intelligent interview preparation platform that combines AI-generated interview questions, guided practice sessions, and speech analysis. Upload your resume and job details to generate role-specific interview questions, then practice with real-time recording and AI feedback.
 
 ## 🚀 Features
 
 ### ✅ Implemented Features
 
-- **User Authentication** - Secure authentication system using Clerk
-- **Resume Upload** - Upload resumes in PDF format with drag-and-drop functionality
-- **Resume Storage** - Store resumes securely on ImageKit CDN
-- **Job Details Input** - Add job position, description, required skills, and experience
-- **AI-Powered Question Generation** - Generate interview questions using n8n workflows integrated with AI
-- **Dashboard Interface** - Clean and intuitive dashboard to manage mock interviews
-- **Responsive Design** - Mobile-friendly UI built with TailwindCSS
-- **Database Integration** - PostgreSQL database with Neon and Drizzle ORM
-<<<<<<< HEAD
-=======
-- **Save generated questions to database**
-- **Display interview questions in UI**
-- **Audio/video recording for practice**
-- **6-Day Interview Commitment** - After first login, users are tracked for a mandatory 6-day interview streak
-- **Missed-Day Email Alerts** - Users receive an email reminder when a required interview day is skipped
->>>>>>> frontend_RakshitBhardwaj1
+- **User Authentication** - Secure sign-in and session management using Clerk
+- **Backend Authorization & Route Protection** - Protected backend endpoints with JWT verification and role-aware checks
+- **Resume Upload** - PDF upload with drag-and-drop UX
+- **Resume Storage** - Secure file storage through ImageKit
+- **Job-Aware Question Generation** - AI interview questions based on resume + job context
+- **Interview Session Dashboard** - Manage interview sessions and progress in one place
+- **Audio Practice Workflow** - Record answers and analyze speech patterns
+- **Async Speech Processing Pipeline** - Non-blocking job-based backend processing with job IDs and result polling
+- **Input Validation & Data Sanity** - Strict backend schema validation, type checks, format checks, and upload constraints
+- **Automated Backend Test Coverage** - Authentication, authorization, validation, async job flow, and failure paths
+- **Interview Commitment Tracking** - 6-day streak monitoring and missed-day email reminders
+- **Responsive UI** - Mobile-friendly app experience with TailwindCSS + shadcn/ui
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Next.js 16** - React framework with App Router
-- **React 19** - UI library
-- **TailwindCSS 4** - Utility-first CSS framework
-- **ShadcN UI** - Component library for modern UI
-- **Lucide React** - Icon library
-- **React Dropzone** - File upload component
+- **Next.js 16** - App Router based web application
+- **React 19** - UI and component model
+- **TailwindCSS 4** - Styling and responsive layout
+- **shadcn/ui** - Reusable UI component primitives
+- **Clerk (Frontend SDK)** - Client authentication and token flow
 
 ### Backend & APIs
-- **Next.js API Routes** - Serverless API endpoints
-- **n8n** - Workflow automation for AI question generation
-- **Google Gemini AI** - AI model for generating interview questions
-- **ImageKit** - CDN for resume storage
-- **Clerk** - Authentication and user management
+- **Next.js API Routes** - Question generation and app-side APIs
+- **FastAPI (speech-analysis-api)** - Speech analysis microservice
+- **FastAPI BackgroundTasks** - Async audio job execution
+- **Clerk JWT Verification** - Backend auth enforcement for protected endpoints
+- **Google Gemini AI** - Text feedback generation
+- **Whisper + Audio Metrics** - Transcription and prosody analysis
+- **n8n** - Workflow automation for interview question generation
 
-### Database
-- **PostgreSQL** - Relational database (Neon)
-- **Drizzle ORM** - TypeScript ORM for database operations
+### Database & Storage
+- **PostgreSQL (Neon)** - Main application data
+- **Drizzle ORM** - Schema and query layer for app DB
+- **SQLite (speech-analysis-api/data/jobs.db)** - Async speech job tracking
+- **ImageKit** - Resume/document CDN storage
 
-<<<<<<< HEAD
 ## 📁 Project Structure
-=======
-## Project Structure
->>>>>>> frontend_RakshitBhardwaj1
 
-```
-smartspeekai/
-├── app/
-│   ├── (auth)/
-│   │   ├── sign-in/         # Sign-in page
-│   │   └── sign-up/         # Sign-up page
-│   ├── api/
-│   │   └── generate-interview-questions/
-│   │       └── route.jsx    # API endpoint for question generation
-│   ├── dashboard/
-│   │   ├── _components/
-│   │   │   ├── AddNewInterview.jsx   # Main interview creation form
-│   │   │   ├── Header.jsx            # Dashboard header
-│   │   │   └── ResumeUpload.jsx      # Resume upload component
-│   │   ├── layout.jsx       # Dashboard layout
-│   │   └── page.jsx         # Dashboard page
-│   ├── globals.css
-│   ├── layout.js
-│   └── page.js
-├── components/
-│   └── ui/                  # ShadcN UI components
-│       ├── button.jsx
-│       ├── dialog.jsx
-│       ├── file-upload.jsx
-│       ├── input.jsx
-│       ├── tabs.jsx
-│       └── textarea.jsx
-├── utils/
-│   ├── db.js               # Database connection
-│   ├── GeminiAIModel.js    # Google Gemini AI configuration
-│   └── schema.js           # Database schema
-└── .env.local              # Environment variables
+```text
+SpeakSmartAI/
+├── app/                                # Next.js app router
+│   ├── (auth)/                         # Clerk auth pages
+│   ├── api/                            # Next.js API routes
+│   └── dashboard/                      # Interview UI, practice and feedback pages
+├── components/                         # Shared UI components
+├── utils/                              # DB and utility helpers
+├── speech-analysis-api/                # FastAPI speech analysis service
+│   ├── app/
+│   │   ├── api/analysis.py             # Protected upload/analyze/result endpoints
+│   │   ├── core/auth.py                # Clerk JWT verification and role checks
+│   │   ├── core/config.py              # Service configuration and limits
+│   │   ├── models/analysis.py          # Strict request/response schemas
+│   │   └── services/job_store.py       # Persistent async job storage
+│   ├── tests/                          # Backend test suite
+│   └── main.py                         # FastAPI app startup
+├── AUTHENTICATION_AUTHORIZATION_FIX.md
+└── ASYNC_AUDIO_PIPELINE_IMPLEMENTATION_DOC.md
 ```
 
 ## 🔧 Installation & Setup
 
 ### Prerequisites
-- Node.js 18+ and npm/yarn
-- PostgreSQL database (Neon account)
-- Clerk account for authentication
-- ImageKit account for file storage
-- Google Gemini API key
-- n8n instance (local or production)
+- Node.js 18+
+- Python 3.11+
+- PostgreSQL (Neon)
+- Clerk project
+- ImageKit account
+- Gemini API access
+- n8n webhook (local or hosted)
 
-### Step 1: Clone the Repository
+### Step 1: Clone Repository
 ```bash
-git clone https://github.com/RakshitBhardwaj1/smartspeekai.git
-cd smartspeekai
+git clone https://github.com/RakshitBhardwaj1/SpeakSmartAI.git
+cd SpeakSmartAI
 ```
 
-### Step 2: Install Dependencies
+### Step 2: Install Frontend Dependencies
 ```bash
 npm install
 ```
 
-### Step 3: Configure Environment Variables
+### Step 3: Configure Frontend Environment
 
-Create a `.env.local` file in the root directory:
+Create `.env.local` in project root and set required values for Clerk, DB, Gemini, ImageKit, and webhook integrations.
 
-```env
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
-CLERK_SECRET_KEY=your_clerk_secret_key
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/
-
-# Database (Neon PostgreSQL)
-NEXT_PUBLIC_DRIZZLE_URL=postgresql://user:password@host/database?sslmode=require
-
-# Google Gemini AI
-NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
-GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
-
-# Interview Configuration
-NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT=10
-
-# ImageKit CDN
-NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
-NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
-IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-
-# N8N Webhook
-N8N_WEBHOOK_URL=https://your-n8n-url.com/webhook/generate-interview-questions
-
-# Streak Email Notifications (Resend)
-RESEND_API_KEY=your_resend_api_key
-STREAK_ALERT_FROM_EMAIL=alerts@your-domain.com
-
-# Cron Security Key (used by /api/interview-streak/check-missed)
-STREAK_CRON_SECRET=your_long_random_secret
-```
-
-### Step 4: Setup Database
+### Step 4: Setup Frontend Database
 ```bash
 npm run db:push
 ```
 
-### Step 5: Run Development Server
+### Step 5: Setup Speech Analysis API
+```bash
+cd speech-analysis-api
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Create `.env` in `speech-analysis-api` and set required values for:
+- Clerk JWT verification (JWKS URL, issuer, audience)
+- Gemini model integration
+- any deployment-specific API settings
+
+### Step 6: Run Services
+
+Frontend:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Speech API:
+```bash
+cd speech-analysis-api
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
 ## 📋 How It Works
 
 ### Interview Question Generation Flow
 
-1. **User Authentication**
-   - Users sign up or log in using Clerk authentication
-   - Access protected dashboard after authentication
+1. User signs in with Clerk and reaches dashboard.
+2. User uploads resume and adds target role context.
+3. Next.js API sends payload to n8n webhook.
+4. Gemini produces role-specific interview questions.
+5. Questions are persisted and displayed in the interview flow.
 
-2. **Resume Upload & Job Details**
-   - Users upload their resume (PDF format) via drag-and-drop
-   - Fill in job details: position, description, skills, and experience
-   - Resume is uploaded to ImageKit CDN for secure storage
+### Speech Analysis Flow (Current Architecture)
 
-3. **API Processing** (`/api/generate-interview-questions`)
-   - Receives form data with resume and job details
-   - Validates ImageKit credentials
-   - Uploads resume to ImageKit CDN
-   - Generates unique file URL
+1. Frontend records answer audio and sends it with Clerk Bearer token.
+2. Backend validates auth, file type, file size, and input constraints.
+3. Upload endpoint returns `job_id` immediately with `processing` status.
+4. Background task processes transcription + analysis.
+5. Frontend polls result endpoint until status is `completed` or `failed`.
+6. Final feedback is merged into interview answer records.
 
-4. **n8n Webhook Integration**
-   - API sends POST request to n8n webhook with:
-     - Resume URL
-     - Job position
-     - Job description
-     - Required skills
-     - Years of experience
-   - n8n workflow processes the data
+## 🔐 Security & Reliability Updates
 
-5. **AI Question Generation**
-   - n8n workflow calls Google Gemini AI
-   - AI analyzes resume and job requirements
-   - Generates relevant interview questions
-   - Returns structured JSON response
+- Backend-first authentication and authorization enforcement
+- Protected endpoints for upload, analyze, result, and user scope
+- Role-restricted admin route checks
+- Strong request validation with strict Pydantic schemas
+- Upload constraints for file extension, content-type, size, and filename sanity
+- Negative-path tests for missing auth, invalid input, and forbidden access
+- Async job persistence with explicit `processing/completed/failed` states
 
-6. **Response Handling**
-   - API receives interview questions from n8n
-   - Returns comprehensive response with:
-     - Resume URL and file ID
-     - Generated interview questions
-     - Job metadata
-   - Frontend logs questions to console
-   - User receives success confirmation
-<img width="1659" height="319" alt="image" src="https://github.com/user-attachments/assets/cb19409d-5020-4277-b84a-470e42eae80e" />
+## 🧪 Test Coverage
 
+Backend tests live in `speech-analysis-api/tests` and currently validate:
+- auth enforcement
+- role-based authorization
+- upload success path
+- invalid input rejection
+- invalid format and oversized malformed payload handling
+- async job result retrieval behavior
 
-
-## 🔑 Key Components
-
-### AddNewInterview Component
-- Dialog-based form for creating new mock interviews
-- Tab interface for resume upload and job details
-- Handles form validation and submission
-- Integrated with axios for API calls
-
-### ResumeUpload Component
-- Drag-and-drop file upload interface
-- PDF file validation
-- Real-time file preview
-
-### API Route - Generate Interview Questions
-- Handles multipart form data
-- Manages ImageKit uploads
-- Integrates with n8n webhooks
-- Error handling and logging
-- Returns structured JSON response
-
-### GeminiAIModel Configuration
-- Google Generative AI client setup
-- Model: gemini-1.5-flash
-- Safety settings configured
-- Chat session management
-
-## 📊 Database Schema
-
-```javascript
-// Example schema structure (check utils/schema.js for full schema)
-- Users (managed by Clerk)
-- Interviews
-  - userId
-  - jobPosition
-  - jobDescription
-  - skills
-  - experience
-  - resumeUrl
-  - questions (JSON)
-  - createdAt
+Run tests:
+```bash
+cd speech-analysis-api
+python -m pytest -q tests
 ```
 
-## 🔐 Environment Variables Reference
+## 📊 Core Data Models
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
-| `CLERK_SECRET_KEY` | Clerk secret key | Yes |
-| `NEXT_PUBLIC_DRIZZLE_URL` | PostgreSQL database URL | Yes |
-| `NEXT_PUBLIC_GEMINI_API_KEY` | Google Gemini API key | Yes |
-| `NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT` | ImageKit URL endpoint | Yes |
-| `NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY` | ImageKit public key | Yes |
-| `IMAGEKIT_PRIVATE_KEY` | ImageKit private key | Yes |
-| `N8N_WEBHOOK_URL` | n8n webhook endpoint | Yes |
-| `NEXT_PUBLIC_INTERVIEW_QUESTION_COUNT` | Number of questions to generate | No |
-| `RESEND_API_KEY` | Resend API key for missed-day emails | Yes (for email alerts) |
-| `STREAK_ALERT_FROM_EMAIL` | Sender email for streak alerts | Yes (for email alerts) |
-| `STREAK_CRON_SECRET` | Secret header value for daily streak check API | Yes (for cron) |
+### App Database (PostgreSQL)
+- users (Clerk managed identity)
+- interviews and question sets
+- answer and feedback records
+- streak tracking metadata
+
+### Speech Job Store (SQLite)
+- job_id
+- user_id
+- status (`processing`, `completed`, `failed`)
+- result_json
+- error
+- timestamps
 
 ## ⏰ Daily Missed-Day Check
 
-To send missed-day emails even when users do not log in, run this endpoint once per day from a cron service:
-
+The missed-day reminder workflow is triggered via:
 - `POST /api/interview-streak/check-missed`
-- Include header: `x-cron-secret: <STREAK_CRON_SECRET>`
 
-##  Troubleshooting
+Run it from a scheduler with the configured cron security header.
 
-### n8n Connection Issues
-If you see `ECONNREFUSED` errors:
-1. Ensure n8n is running on the correct port
-2. Verify `N8N_WEBHOOK_URL` in `.env.local`
-3. Restart Next.js dev server after env changes
-4. Check n8n webhook is activated and accessible
-
-### ImageKit Upload Failures
-1. Verify all ImageKit credentials are correct
-2. Check file size limits (usually 25MB for free tier)
-3. Ensure file format is supported (PDF for resumes)
-
-### Database Connection Issues
-1. Verify PostgreSQL connection string
-2. Check Neon database is active
-3. Run `npm run db:push` to sync schema
-
-## Available Scripts
+## 🧰 Available Scripts
 
 ```bash
-npm run dev        # Start development server
-npm run build      # Build production version
-npm run start      # Start production server
+npm run dev        # Start frontend in development
+npm run build      # Build frontend for production
+npm run start      # Start frontend production server
 npm run lint       # Run ESLint
-npm run db:push    # Push database schema
+npm run db:push    # Push Drizzle schema
 npm run db:studio  # Open Drizzle Studio
 ```
 
-## 🎯 Upcoming Features
+## Troubleshooting
 
-- [ ] AI-powered feedback on answers
-- [ ] Interview history and analytics
-- [ ] Share interview preparation links
+### Frontend cannot generate interview questions
+1. Confirm webhook URL configuration.
+2. Ensure n8n workflow is active and reachable.
+3. Restart dev server after env updates.
+
+### Speech API returns auth errors
+1. Verify Bearer token is sent from frontend.
+2. Check Clerk JWT verification config in speech API.
+3. Confirm issuer/audience values match Clerk setup.
+
+### Upload rejected by speech API
+1. Validate file extension and audio content-type.
+2. Check file size against API upload limit.
+3. Ensure file is non-empty and valid audio media.
+
+## 🎯 Next Milestones
+
+- [ ] Production worker queue for high-throughput background jobs
+- [ ] API rate limiting and abuse controls
+- [ ] Structured observability and alerting for job failures
+- [ ] Enhanced feedback analytics dashboard
 

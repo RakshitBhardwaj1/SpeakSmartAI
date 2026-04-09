@@ -169,6 +169,38 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     }
   }
 
+  const pollSpeechResult = async (jobId, token) => {
+    const maxAttempts = 45
+    const delayMs = 2000
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const resultResp = await fetch(`http://localhost:8000/api/v1/result/${jobId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!resultResp.ok) {
+        const resultErr = await resultResp.text()
+        throw new Error(`Result polling failed: ${resultErr}`)
+      }
+
+      const resultJson = await resultResp.json()
+      if (resultJson.status === 'completed') {
+        return resultJson.result
+      }
+
+      if (resultJson.status === 'failed') {
+        throw new Error(resultJson.error || 'Speech processing failed')
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    throw new Error('Speech processing timed out')
+  }
+
   const upsertAnswer = async ({ answerText, feedbackResult = null }) => {
     const context = getCurrentQuestionContext()
     if (!context) return
@@ -258,8 +290,8 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
 
             const formData = new FormData();
             formData.append('file', audioBlob, 'recording.webm');
-            console.log("Sending audio to Python speech-analysis-api...");
-            const response = await fetch('http://localhost:8000/api/v1/analyze', {
+            console.log("Submitting audio job to Python speech-analysis-api...");
+            const response = await fetch('http://localhost:8000/api/v1/upload', {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -268,8 +300,10 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
             });
             if (response.ok) {
               const apiResult = await response.json();
-              speechResult = apiResult.data;
-              console.log("Python API analysis successful");
+              if (apiResult.job_id) {
+                speechResult = await pollSpeechResult(apiResult.job_id, token)
+                console.log("Python API async analysis successful");
+              }
             } else {
               const errorText = await response.text();
               console.warn('Speech analysis API error: ' + errorText);

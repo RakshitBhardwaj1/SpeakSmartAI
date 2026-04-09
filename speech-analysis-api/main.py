@@ -6,6 +6,7 @@ import imageio_ffmpeg
 os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
 from app.core.config import settings
 from app.api import analysis
+from app.services.job_store import init_jobs_table
 
 
 # Create FastAPI app
@@ -26,6 +27,12 @@ app.add_middleware(
 
 # Include routers
 app.include_router(analysis.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize persistent tables required by the API."""
+    init_jobs_table()
 
 
 @app.get("/", response_class=HTMLResponse)

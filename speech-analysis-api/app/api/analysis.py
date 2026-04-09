@@ -1,11 +1,16 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from fastapi.responses import JSONResponse
 import os
-import tempfile
+import traceback
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
+
 from app.core.config import settings
 from app.core.auth import AuthenticatedUser, get_current_user, require_admin
 from app.models.analysis import UploadRequest
 from app.services.analysis import SpeechAnalysisService
+from app.services.job_store import create_job, get_job, update_job
 
 
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
@@ -64,56 +69,89 @@ async def _analyze_audio_file(file: UploadFile):
     if len(content) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail=f"File too large. Max size: {settings.max_upload_size / 1024 / 1024}MB")
     
-    # Save temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-        tmp_file.write(content)
-        tmp_path = tmp_file.name
-    
+    file_extension = Path(normalized_filename).suffix or ".wav"
+    processing_dir = Path(settings.processing_upload_directory)
+    processing_dir.mkdir(parents=True, exist_ok=True)
+
+    temp_file_name = f"{uuid.uuid4().hex}{file_extension}"
+    temp_path = processing_dir / temp_file_name
+    temp_path.write_bytes(content)
+
+    return str(temp_path)
+
+
+def _process_audio_job(job_id: str, file_path: str) -> None:
     try:
-        # Analyze
-        result = analysis_service.analyze_audio(tmp_path)
-        
-        return JSONResponse(content={
-            "status": "success",
-            "data": {
-                "transcript": result["transcript"],
-                "duration": result["duration"],
-                "report_card": result["report_card"],
-                "pauses": result["pauses"],
-                "feedback": result["feedback"],
-                "graphs": result["graphs"]
-            }
-        })
-    
-    except Exception as e:
-        import traceback
+        result = analysis_service.analyze_audio(file_path)
+        update_job(job_id=job_id, status="completed", result=result)
+    except Exception as exc:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
-    
+        update_job(job_id=job_id, status="failed", error=str(exc))
     finally:
-        # Cleanup
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+
+async def _submit_audio_job(
+    file: UploadFile,
+    user: AuthenticatedUser,
+    background_tasks: BackgroundTasks,
+) -> JSONResponse:
+    file_path = await _analyze_audio_file(file)
+    job_id = str(uuid.uuid4())
+
+    create_job(job_id=job_id, user_id=user.user_id, status="processing")
+    background_tasks.add_task(_process_audio_job, job_id, file_path)
+
+    return JSONResponse(
+        content={
+            "job_id": job_id,
+            "status": "processing",
+        }
+    )
 
 
 @router.post("/analyze")
 async def analyze_audio(
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Analyze uploaded audio file for an authenticated user."""
-    _ = user
-    return await _analyze_audio_file(file)
+    """Submit audio for async analysis and return job metadata."""
+    return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
 
 
 @router.post("/upload")
 async def upload_audio(
     file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Alias for analyze route kept for compatibility with upload semantics."""
-    _ = user
-    return await _analyze_audio_file(file)
+    """Alias endpoint for async audio job submission."""
+    return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
+
+
+@router.get("/result/{job_id}")
+async def get_analysis_result(job_id: str, user: AuthenticatedUser = Depends(get_current_user)):
+    """Fetch status/result for a previously submitted analysis job."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job["user_id"] != user.user_id and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    response = {
+        "job_id": job["id"],
+        "status": job["status"],
+    }
+
+    if job["status"] == "completed":
+        response["result"] = job["result"]
+    elif job["status"] == "failed":
+        response["error"] = job["error"]
+
+    return response
 
 
 @router.post("/upload-url")

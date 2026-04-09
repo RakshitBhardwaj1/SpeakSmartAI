@@ -30,4 +30,25 @@ def test_upload_success(client, mock_verify_token, monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["status"] == "success"
+    payload = response.json()
+    assert payload["status"] == "processing"
+    assert payload.get("job_id")
+
+    result_response = client.get(
+        f"/api/v1/result/{payload['job_id']}",
+        headers={"Authorization": "Bearer fake"},
+    )
+
+    assert result_response.status_code == 200
+    assert result_response.json()["status"] == "completed"
+
+
+def test_result_job_not_found(client, mock_verify_token) -> None:
+    mock_verify_token(role="user")
+
+    response = client.get(
+        "/api/v1/result/non-existent-job-id",
+        headers={"Authorization": "Bearer fake"},
+    )
+
+    assert response.status_code == 404
