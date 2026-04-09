@@ -1,6 +1,7 @@
 import os
 import traceback
 import uuid
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
@@ -11,6 +12,7 @@ from app.core.auth import AuthenticatedUser, get_current_user, require_admin
 from app.models.analysis import UploadRequest
 from app.services.analysis import SpeechAnalysisService
 from app.services.job_store import create_job, get_job, update_job
+from app.services.metrics import jobs_failed, jobs_total, job_duration
 
 
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
@@ -81,13 +83,17 @@ async def _analyze_audio_file(file: UploadFile):
 
 
 def _process_audio_job(job_id: str, file_path: str) -> None:
+    started_at = time.time()
     try:
         result = analysis_service.analyze_audio(file_path)
         update_job(job_id=job_id, status="completed", result=result)
     except Exception as exc:
         traceback.print_exc()
+        jobs_failed.inc()
         update_job(job_id=job_id, status="failed", error=str(exc))
     finally:
+        jobs_total.inc()
+        job_duration.observe(time.time() - started_at)
         if os.path.exists(file_path):
             os.remove(file_path)
 

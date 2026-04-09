@@ -16,3 +16,5 @@ python-dotenv
 spacy
 aiofiles
 PyYAML
+prometheus-fastapi-instrumentator
+prometheus_client

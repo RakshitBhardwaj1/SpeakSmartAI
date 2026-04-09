@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 import os
 import imageio_ffmpeg
 os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
@@ -27,6 +28,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(analysis.router)
+
+# Expose Prometheus metrics for system observability
+Instrumentator().instrument(app).expose(app)
 
 
 @app.on_event("startup")
