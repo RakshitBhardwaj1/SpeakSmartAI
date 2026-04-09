@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Security: CORS
+    cors_allowed_origins_csv: str = os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000",
+    )
+
     # Clerk Authentication / Authorization
     clerk_jwks_url: str = os.getenv("CLERK_JWKS_URL", "")
     clerk_jwt_issuer: str = os.getenv("CLERK_JWT_ISSUER", "")
@@ -35,6 +41,7 @@ class Settings(BaseSettings):
     # LLM Configuration
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     llm_model: str = "gemini-2.0-flash"  # Primary model
+    max_prompt_input_chars: int = 2000
     fallback_llm_models: list = [
         "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
@@ -49,6 +56,14 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_allowed_origins_csv.split(",")
+            if origin.strip()
+        ]
 
 
 settings = Settings()

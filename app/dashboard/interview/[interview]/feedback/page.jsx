@@ -93,7 +93,8 @@ function Feedback({ params }) {
 
   const formatFeedbackText = (text) => {
     if (!text) return null;
-    return text.split('\n').map((line, i) => {
+    const safeText = String(text).replace(/<[^>]*>/g, "");
+    return safeText.split('\n').map((line, i) => {
       let formattedLine = line;
       let isHeading = false;
       if (formattedLine.startsWith('### ')) {
@@ -115,6 +116,8 @@ function Feedback({ params }) {
       );
     });
   };
+
+  const safeLabel = (value) => String(value || "").replace(/[^a-zA-Z0-9 _-]/g, "").trim();
 
   useEffect(() => {
     if (completionMarkedRef.current) return;
@@ -352,7 +355,7 @@ function Feedback({ params }) {
                                     <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/5" />
                                   </div>
                                   <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                    {name.replace(/_/g, ' ')}
+                                    {safeLabel(name).replace(/_/g, ' ')}
                                   </p>
                                 </div>
                               ))}

@@ -20,10 +20,10 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include routers
@@ -37,6 +37,19 @@ Instrumentator().instrument(app).expose(app)
 async def startup_event():
     """Initialize persistent tables required by the API."""
     init_jobs_table()
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Apply baseline browser-facing security headers to all responses."""
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["Referrer-Policy"] = "no-referrer"
+
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
