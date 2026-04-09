@@ -1,8 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
 import os
 import tempfile
 from app.core.config import settings
+from app.core.auth import AuthenticatedUser, get_current_user, require_admin
 from app.services.analysis import SpeechAnalysisService
 
 
@@ -12,8 +13,7 @@ router = APIRouter(prefix="/api/v1", tags=["Analysis"])
 analysis_service = SpeechAnalysisService()
 
 
-@router.post("/analyze")
-async def analyze_audio(file: UploadFile = File(...)):
+async def _analyze_audio_file(file: UploadFile):
     """
     Analyze uploaded audio file
     
@@ -67,6 +67,45 @@ async def analyze_audio(file: UploadFile = File(...)):
         # Cleanup
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@router.post("/analyze")
+async def analyze_audio(
+    file: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Analyze uploaded audio file for an authenticated user."""
+    _ = user
+    return await _analyze_audio_file(file)
+
+
+@router.post("/upload")
+async def upload_audio(
+    file: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(get_current_user),
+):
+    """Alias for analyze route kept for compatibility with upload semantics."""
+    _ = user
+    return await _analyze_audio_file(file)
+
+
+@router.get("/user-data")
+async def get_user_data(user: AuthenticatedUser = Depends(get_current_user)):
+    """Return normalized user claims from a verified token."""
+    return {
+        "user_id": user.user_id,
+        "email": user.email,
+        "role": user.role,
+    }
+
+
+@router.get("/admin/audit")
+async def admin_audit(user: AuthenticatedUser = Depends(require_admin)):
+    """Authorization guard example for restricted actions."""
+    return {
+        "status": "ok",
+        "admin": user.email or user.user_id,
+    }
 
 
 @router.get("/health")

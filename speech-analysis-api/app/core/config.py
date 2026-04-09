@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     # API Configuration
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+
+    # Clerk Authentication / Authorization
+    clerk_jwks_url: str = os.getenv("CLERK_JWKS_URL", "")
+    clerk_jwt_issuer: str = os.getenv("CLERK_JWT_ISSUER", "")
+    clerk_jwt_audience: str = os.getenv("CLERK_JWT_AUDIENCE", "")
+    admin_emails_csv: str = os.getenv("ADMIN_EMAILS", "")
     
     # File Upload Configuration
     max_upload_size: int = 50 * 1024 * 1024  # 50MB

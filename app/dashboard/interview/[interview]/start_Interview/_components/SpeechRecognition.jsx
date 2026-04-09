@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { db } from '@/utils/db'
 import { UserAnswerTable } from '@/utils/schema'
-import { useUser } from '@clerk/nextjs'
+import { useAuth, useUser } from '@clerk/nextjs'
 import { StopCircle } from 'lucide-react'
 import { and, eq } from 'drizzle-orm'
 import { useRouter } from 'next/navigation'
@@ -27,6 +27,7 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
 
   const [userAnswer, setUserAnswer] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const { getToken } = useAuth()
   const { user } = useUser()
   const router = useRouter()
   const lastSyncedAnswerRef = useRef('')
@@ -249,11 +250,20 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
         let speechResult = null;
         if (audioBlob) {
           try {
+            const token = await getToken();
+            if (!token) {
+              toast.error('Authentication required. Please sign in again.');
+              return;
+            }
+
             const formData = new FormData();
             formData.append('file', audioBlob, 'recording.webm');
             console.log("Sending audio to Python speech-analysis-api...");
             const response = await fetch('http://localhost:8000/api/v1/analyze', {
               method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
               body: formData
             });
             if (response.ok) {

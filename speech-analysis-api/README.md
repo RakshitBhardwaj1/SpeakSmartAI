@@ -64,6 +64,32 @@ FastAPI server for audio analysis with prosody metrics, pause detection, and LLM
 
 ## API Usage
 
+## Authentication and Authorization (Mandatory)
+
+All critical endpoints are now backend-protected.
+
+Security model:
+- Authentication: verify Clerk JWT signature using Clerk JWKS
+- Authorization: enforce role/email-based admin guard for restricted routes
+- Enforcement location: FastAPI dependencies (not frontend)
+
+Required request header for protected endpoints:
+
+```http
+Authorization: Bearer <clerk_jwt>
+```
+
+Protected endpoints:
+- `POST /api/v1/analyze`
+- `POST /api/v1/upload`
+- `GET /api/v1/user-data`
+- `GET /api/v1/admin/audit` (admin only)
+
+Failure behavior:
+- Missing token: `401`
+- Invalid token/signature: `401`
+- Authenticated but insufficient permission: `403`
+
 ### Analyze Audio
 
 **Endpoint:** `POST /api/v1/analyze`
@@ -72,6 +98,7 @@ FastAPI server for audio analysis with prosody metrics, pause detection, and LLM
 ```bash
 curl -X POST "http://localhost:8000/api/v1/analyze" \
   -H "accept: application/json" \
+  -H "Authorization: Bearer <clerk_jwt>" \
   -F "file=@your_audio.wav"
 ```
 
@@ -163,11 +190,22 @@ speech-analysis-api/
 ### Environment Variables
 
 - `GEMINI_API_KEY`: Google Gemini API key (required for feedback)
+- `CLERK_JWKS_URL`: Clerk JWKS URL (required for JWT verification)
+- `CLERK_JWT_ISSUER`: Expected Clerk token issuer (recommended)
+- `CLERK_JWT_AUDIENCE`: Expected audience value (optional but recommended)
+- `ADMIN_EMAILS`: Comma-separated admin emails for basic authorization (optional)
 - `WHISPER_MODEL`: Whisper model size (default: base, options: tiny, small, base, medium, large)
 - `LANGUAGE`: Language code (default: vi for Vietnamese)
 - `API_HOST`: Server host (default: 0.0.0.0)
 - `API_PORT`: Server port (default: 8000)
 - `MAX_UPLOAD_SIZE`: Max file size in bytes (default: 50MB)
+
+### Security Verification Checklist
+
+- Request to protected route without token returns `401`
+- Request with invalid/fake token returns `401`
+- Valid token can access standard protected endpoints
+- Non-admin user calling `GET /api/v1/admin/audit` returns `403`
 
 ## Analysis Pipeline
 
