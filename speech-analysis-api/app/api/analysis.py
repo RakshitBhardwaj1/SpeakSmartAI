@@ -4,11 +4,12 @@ import uuid
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.auth import AuthenticatedUser, get_current_user, require_admin
+from app.core.rate_limit import limiter
 from app.models.analysis import UploadRequest
 from app.services.analysis import SpeechAnalysisService
 from app.services.job_store import create_job, get_job, update_job
@@ -118,28 +119,36 @@ async def _submit_audio_job(
 
 
 @router.post("/analyze")
+@limiter.limit("5/minute")
 async def analyze_audio(
+    request: Request,
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Submit audio for async analysis and return job metadata."""
+    _ = request
     return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
 
 
 @router.post("/upload")
+@limiter.limit("5/minute")
 async def upload_audio(
+    request: Request,
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Alias endpoint for async audio job submission."""
+    _ = request
     return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
 
 
 @router.get("/result/{job_id}")
-async def get_analysis_result(job_id: str, user: AuthenticatedUser = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def get_analysis_result(request: Request, job_id: str, user: AuthenticatedUser = Depends(get_current_user)):
     """Fetch status/result for a previously submitted analysis job."""
+    _ = request
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -161,12 +170,14 @@ async def get_analysis_result(job_id: str, user: AuthenticatedUser = Depends(get
 
 
 @router.post("/upload-url")
+@limiter.limit("10/minute")
 async def upload_audio_url(
+    request: Request,
     data: UploadRequest,
     user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Validate and normalize URL input for audio uploads."""
-    _ = user
+    _ = (request, user)
     return {
         "status": "accepted",
         "file_url": data.file_url,

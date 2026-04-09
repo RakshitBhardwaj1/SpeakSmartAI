@@ -18,3 +18,4 @@ aiofiles
 PyYAML
 prometheus-fastapi-instrumentator
 prometheus_client
+slowapi

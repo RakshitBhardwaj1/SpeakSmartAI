@@ -17,6 +17,7 @@ SmartSpeakAI is an intelligent interview preparation platform that combines AI-g
 - **Input Validation & Data Sanity** - Strict backend schema validation, type checks, format checks, and upload constraints
 - **Automated Backend Test Coverage** - Authentication, authorization, validation, async job flow, and failure paths
 - **Monitoring & Observability** - Prometheus metrics endpoint, custom job metrics, and Grafana-ready dashboards
+- **Security Hardening (Part 1-4)** - CORS restrictions, security headers, XSS defenses, prompt-injection guards, CSRF posture checks, and API rate limiting
 - **Interview Commitment Tracking** - 6-day streak monitoring and missed-day email reminders
 - **Responsive UI** - Mobile-friendly app experience with TailwindCSS + shadcn/ui
 
@@ -37,6 +38,7 @@ SmartSpeakAI is an intelligent interview preparation platform that combines AI-g
 - **Google Gemini AI** - Text feedback generation
 - **Whisper + Audio Metrics** - Transcription and prosody analysis
 - **Prometheus + Grafana** - Metrics collection and dashboard visualization
+- **SlowAPI** - Endpoint and global rate limiting for abuse control
 - **n8n** - Workflow automation for interview question generation
 
 ### Database & Storage
@@ -60,16 +62,22 @@ SpeakSmartAI/
 │   │   ├── api/analysis.py             # Protected upload/analyze/result endpoints
 │   │   ├── core/auth.py                # Clerk JWT verification and role checks
 │   │   ├── core/config.py              # Service configuration and limits
+│   │   ├── core/rate_limit.py          # Centralized rate limit policy
 │   │   ├── models/analysis.py          # Strict request/response schemas
 │   │   └── services/
 │   │       ├── job_store.py            # Persistent async job storage
-│   │       └── metrics.py              # Custom Prometheus job metrics
+│   │       ├── metrics.py              # Custom Prometheus job metrics
+│   │       └── prompt_security.py      # Prompt injection and output safety guards
 │   ├── observability/                  # Prometheus scrape config
 │   ├── tests/                          # Backend test suite
 │   └── main.py                         # FastAPI app startup
 ├── AUTHENTICATION_AUTHORIZATION_FIX.md
 ├── ASYNC_AUDIO_PIPELINE_IMPLEMENTATION_DOC.md
-└── MONITORING_OBSERVABILITY_DOC.md
+├── MONITORING_OBSERVABILITY_DOC.md
+├── SECURITY_HARDENING_DOC_PART1.md
+├── SECURITY_HARDENING_DOC_PART2.md
+├── SECURITY_HARDENING_DOC_PART3.md
+└── SECURITY_HARDENING_DOC_PART4.md
 ```
 
 ## 🔧 Installation & Setup
@@ -155,6 +163,13 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - Role-restricted admin route checks
 - Strong request validation with strict Pydantic schemas
 - Upload constraints for file extension, content-type, size, and filename sanity
+- Strict CORS allowlist (no wildcard origin policy)
+- Browser security headers: `X-Content-Type-Options`, `X-Frame-Options`, CSP, and Referrer-Policy
+- XSS hardening in feedback rendering and dynamic UI text handling
+- Prompt-injection defense with input filtering, size limits, and guarded prompt framing
+- AI output validation and escaping for safer frontend display
+- CSRF posture hardening via header-based auth enforcement and content-type checks
+- Endpoint-level and global rate limiting on expensive/high-risk APIs
 - Negative-path tests for missing auth, invalid input, and forbidden access
 - Async job persistence with explicit `processing/completed/failed` states
 
@@ -167,6 +182,9 @@ Backend tests live in `speech-analysis-api/tests` and currently validate:
 - invalid input rejection
 - invalid format and oversized malformed payload handling
 - async job result retrieval behavior
+- CORS and security headers behavior
+- prompt injection and output sanitization guards
+- rate limiting with expected `429` responses
 
 Run tests:
 ```bash
@@ -243,7 +261,7 @@ npm run db:studio  # Open Drizzle Studio
 ## 🎯 Next Milestones
 
 - [ ] Production worker queue for high-throughput background jobs
-- [ ] API rate limiting and abuse controls
 - [ ] Alerting thresholds and incident playbooks for job failures
+- [ ] Centralized security event alerting for repeated violations
 - [ ] Enhanced feedback analytics dashboard
 
