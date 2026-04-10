@@ -1,21 +1,32 @@
-fastapi
-uvicorn
-python-multipart
-requests
-python-jose[cryptography]
-imageio-ffmpeg
-librosa
-numpy
-scipy
-matplotlib
-pydantic
-pydantic-settings
-google-generativeai
-openai-whisper
-python-dotenv
-spacy
-aiofiles
-PyYAML
-prometheus-fastapi-instrumentator
-prometheus_client
-slowapi
+# Core Web Server
+fastapi==0.121.3
+uvicorn==0.38.0
+python-multipart==0.0.20
+requests==2.33.1
+python-dotenv==1.0.1
+aiofiles==24.1.0
+
+# AI and Machine Learning
+google-generativeai==0.8.3
+openai-whisper==20250625
+torch==2.9.0
+
+# Audio Processing
+librosa==0.10.2.post1
+imageio-ffmpeg==0.5.1
+numpy==2.1.0
+scipy==1.14.1
+
+# Visualization and Data
+matplotlib==3.10.7
+pydantic==2.8.2
+pydantic-settings==2.13.1
+PyYAML==6.0.3
+
+# Observability and Rate Limiting
+prometheus-fastapi-instrumentator==7.0.0
+prometheus_client==0.21.0
+slowapi==0.1.9
+
+# Security
+python-jose[cryptography]==3.3.0
