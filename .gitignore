@@ -54,3 +54,5 @@ __pycache__/
 *.exe
 *.so
 *.dylib
+# clerk configuration (can include secrets)
+/.clerk/

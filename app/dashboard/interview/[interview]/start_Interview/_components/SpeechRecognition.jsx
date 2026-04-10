@@ -5,11 +5,8 @@ import useSpeechToText from 'react-hook-speech-to-text'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import { db } from '@/utils/db'
-import { UserAnswerTable } from '@/utils/schema'
-import { useAuth, useUser } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 import { StopCircle } from 'lucide-react'
-import { and, eq } from 'drizzle-orm'
 import { useRouter } from 'next/navigation'
 
 function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, onNext = () => {}, mockId: propMockId = '', onQuestionChange = () => {} }) {
@@ -74,7 +71,6 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
   const [userAnswer, setUserAnswer] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const { getToken } = useAuth()
-  const { user } = useUser()
   const router = useRouter()
   const lastSyncedAnswerRef = useRef('')
   const prevRecordingRef = useRef(false)
@@ -225,7 +221,6 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
       question,
       correctAnswer: questionObj?.answer || 'N/A',
       mockId: propMockId || localStorage.getItem('mockId') || 'mock_unknown',
-      userEmail: user?.primaryEmailAddress?.emailAddress || localStorage.getItem('userEmail') || 'unknown@example.com',
     }
   }
 
@@ -265,49 +260,25 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     const context = getCurrentQuestionContext()
     if (!context) return
 
-    const { question, correctAnswer, mockId, userEmail } = context
+    const { question, correctAnswer, mockId } = context
 
-    const existing = await db
-      .select({ id: UserAnswerTable.id })
-      .from(UserAnswerTable)
-      .where(
-        and(
-          eq(UserAnswerTable.mockId, mockId),
-          eq(UserAnswerTable.question, question),
-          eq(UserAnswerTable.userEmail, userEmail)
-        )
-      )
-      .limit(1)
-
-    const basePayload = {
-      useranswer: answerText,
-      correctanswer: correctAnswer,
-    }
-
-    if (feedbackResult) {
-      basePayload.feedback = JSON.stringify(feedbackResult)
-      basePayload.rating = Number(feedbackResult?.rating) || null
-      if (feedbackResult.modelAnswer) {
-        basePayload.correctanswer = feedbackResult.modelAnswer
-      }
-    }
-
-    if (existing.length > 0) {
-      await db
-        .update(UserAnswerTable)
-        .set(basePayload)
-        .where(eq(UserAnswerTable.id, existing[0].id))
-    } else {
-      await db.insert(UserAnswerTable).values({
+    const response = await fetch('/api/interviews/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         mockId,
         question,
-        correctanswer: correctAnswer,
-        useranswer: interviewQuestions[activeQuestionIndex]?.answer || 'N/A',
-        feedback: feedbackResult ? JSON.stringify(feedbackResult) : null,
-        rating: feedbackResult ? Number(feedbackResult?.rating) || null : null,
-        userEmail,
-        createdAt: new Date().toISOString(),
-      })
+        answerText,
+        fallbackCorrectAnswer: correctAnswer,
+        feedbackResult,
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(errText || 'Failed to save answer')
     }
   }
 
@@ -495,7 +466,7 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     }, 700)
 
     return () => clearTimeout(timer)
-  }, [userAnswer, isRecording, activeQuestionIndex, interviewQuestions, user])
+  }, [userAnswer, isRecording, activeQuestionIndex, interviewQuestions])
 
   // When recording stops, finalize the answer with feedback.
   useEffect(() => {

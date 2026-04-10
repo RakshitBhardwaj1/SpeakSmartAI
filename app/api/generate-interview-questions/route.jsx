@@ -212,6 +212,14 @@ export async function POST(req) {
   try {
     const user = await currentUser();
     const { userId } = await auth();
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401 }
+      );
+    }
+
     const userEmail =
       user?.primaryEmailAddress?.emailAddress ||
       user?.emailAddresses?.[0]?.emailAddress ||
@@ -255,23 +263,44 @@ export async function POST(req) {
         );
       }
 
+      if (privateKey.includes("*")) {
+        return new Response(
+          JSON.stringify({
+            error: "ImageKit private key appears masked/invalid",
+            hint: "Set IMAGEKIT_PRIVATE_KEY to the full secret key (no asterisks) and restart Next.js.",
+          }),
+          { status: 500 }
+        );
+      }
+
       const imagekit = new ImageKit({
         publicKey,
         privateKey,
         urlEndpoint,
       });
 
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      safeName = file.name || `resume-${Date.now()}.pdf`;
+      try {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        safeName = file.name || `resume-${Date.now()}.pdf`;
 
-      uploadPdf = await imagekit.upload({
-        file: buffer,
-        fileName: `${Date.now()}-${safeName}`,
-        useUniqueFileName: true,
-        folder: "/resumes",
-        isPublished: true,
-      });
+        uploadPdf = await imagekit.upload({
+          file: buffer,
+          fileName: `${Date.now()}-${safeName}`,
+          useUniqueFileName: true,
+          folder: "/resumes",
+          isPublished: true,
+        });
+      } catch (uploadError) {
+        return new Response(
+          JSON.stringify({
+            error: "ImageKit upload failed",
+            details: uploadError?.message || "Unknown ImageKit error",
+            hint: "Verify IMAGEKIT keys/endpoint in .env.local and ensure the key has upload permissions.",
+          }),
+          { status: 502 }
+        );
+      }
 
       resumeUrl = uploadPdf.url;
       console.log("✅ Resume uploaded successfully:", resumeUrl);
@@ -287,14 +316,37 @@ export async function POST(req) {
       );
     }
 
-    if (n8nWebhookUrl.includes("/webhook-test/")) {
-      return new Response(
-        JSON.stringify({
-          error: "N8N_WEBHOOK_URL points to webhook-test",
-          details: "Use production endpoint (/webhook/...) instead of /webhook-test/.",
-        }),
-        { status: 500 }
+    const isWebhookTestUrl = n8nWebhookUrl.includes("/webhook-test/");
+    if (isWebhookTestUrl) {
+      console.warn(
+        "N8N webhook is using /webhook-test/. This URL may return 404/401 unless a test execution is active in n8n."
       );
+    }
+
+    const n8nHeaders = { "Content-Type": "application/json" };
+    const rawAuthHeader = process.env.N8N_WEBHOOK_AUTH_HEADER?.trim();
+    const bearerToken = process.env.N8N_WEBHOOK_BEARER_TOKEN?.trim();
+    const basicUser = process.env.N8N_WEBHOOK_BASIC_USER?.trim();
+    const basicPassword = process.env.N8N_WEBHOOK_BASIC_PASSWORD?.trim();
+    const apiKey = process.env.N8N_WEBHOOK_API_KEY?.trim();
+    const apiKeyHeader = process.env.N8N_WEBHOOK_API_KEY_HEADER?.trim() || "x-api-key";
+
+    if (rawAuthHeader && rawAuthHeader.includes(":")) {
+      const separatorIndex = rawAuthHeader.indexOf(":");
+      const headerName = rawAuthHeader.slice(0, separatorIndex).trim();
+      const headerValue = rawAuthHeader.slice(separatorIndex + 1).trim();
+      if (headerName && headerValue) {
+        n8nHeaders[headerName] = headerValue;
+      }
+    } else if (bearerToken) {
+      n8nHeaders.Authorization = `Bearer ${bearerToken}`;
+    } else if (basicUser && basicPassword) {
+      const encoded = Buffer.from(`${basicUser}:${basicPassword}`).toString("base64");
+      n8nHeaders.Authorization = `Basic ${encoded}`;
+    }
+
+    if (apiKey) {
+      n8nHeaders[apiKeyHeader] = apiKey;
     }
 
     // Build n8n payload based on whether resume exists
@@ -328,7 +380,7 @@ export async function POST(req) {
     try {
       n8nRes = await fetch(n8nWebhookUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: n8nHeaders,
         body: JSON.stringify(n8nPayload),
         cache: "no-store",
         timeout: 30000,
@@ -353,18 +405,29 @@ export async function POST(req) {
 
     if (!n8nRes.ok) {
       const n8nText = await n8nRes.text();
+      const safeDetails = (n8nText || "").slice(0, 2000);
+      const looksLikeAuthFailure =
+        n8nRes.status === 401 ||
+        n8nRes.status === 403 ||
+        /auth|unauthor|forbidden|token|credential/i.test(safeDetails);
+
       console.error("n8n webhook failed:", {
         status: n8nRes.status,
         url: n8nWebhookUrl,
-        body: n8nText,
+        body: safeDetails,
       });
 
       return new Response(
         JSON.stringify({
-          error: "n8n webhook failed",
+          error: looksLikeAuthFailure ? "n8n authentication failed" : "n8n webhook failed",
           status: n8nRes.status,
           url: n8nWebhookUrl,
-          details: n8nText,
+          details: safeDetails,
+          hint: looksLikeAuthFailure
+            ? "Set webhook auth env vars: N8N_WEBHOOK_BEARER_TOKEN or N8N_WEBHOOK_BASIC_USER/N8N_WEBHOOK_BASIC_PASSWORD (or N8N_WEBHOOK_AUTH_HEADER)."
+            : isWebhookTestUrl && n8nRes.status === 404
+              ? "If using /webhook-test/, start a test execution in n8n or switch to production /webhook/ URL."
+              : "Verify webhook URL and workflow activation in n8n.",
         }),
         { status: 502 }
       );

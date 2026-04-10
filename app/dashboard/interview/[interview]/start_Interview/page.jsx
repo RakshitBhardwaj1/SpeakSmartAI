@@ -1,9 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { db } from "@/utils/db";
-import { InterviewSessionTable } from "@/utils/schema";
-import { eq } from "drizzle-orm";
 import QuestionsSection from "./_components/QuestionsSection";
 import RecordAnswerSection from "./_components/RecordAnswerSection";
 
@@ -14,10 +11,17 @@ function Start_Interview_Actual({ params }) {
   useEffect(() => {
     const getInterviewDetails = async () => {
       try {
-        const result = await db
-          .select()
-          .from(InterviewSessionTable)
-          .where(eq(InterviewSessionTable.mockId, interviewId));
+        const response = await fetch(`/api/interviews/${encodeURIComponent(interviewId)}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch interview details");
+        }
+
+        const json = await response.json();
+        const result = json?.interview ? [json.interview] : [];
 
         if (!result || result.length === 0) {
           console.log("Interview details not found.");

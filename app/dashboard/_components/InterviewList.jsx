@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { db } from "@/utils/db";
-import { InterviewSessionTable, SpeakSmartAI, UserAnswerTable } from "@/utils/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { useAuth, useUser } from "@clerk/nextjs";
 import InterviewItemCard from "./InterviewItemCard";
 
 function InterviewList() {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [interviewList, setInterviewList] = useState([]);
+
+  const buildAuthHeaders = async () => {
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -19,13 +22,26 @@ function InterviewList() {
 
   const getInterviewList = async () => {
     try {
-      const result = await db
-        .select()
-        .from(InterviewSessionTable)
-        .where(eq(InterviewSessionTable.userId, user.id))
-        .orderBy(desc(InterviewSessionTable.createdAt));
+      const headers = await buildAuthHeaders();
+      const response = await fetch("/api/interviews", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+        headers,
+      });
 
-      setInterviewList(result || []);
+      if (response.status === 401) {
+        setInterviewList([]);
+        console.warn("Interview API returned 401. Please sign in again.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch interviews (${response.status})`);
+      }
+
+      const data = await response.json();
+      setInterviewList(data?.interviews || []);
     } catch (error) {
       console.error("Failed to load interview list:", error);
       setInterviewList([]);
@@ -42,22 +58,21 @@ function InterviewList() {
     if (!isConfirmed) return;
 
     try {
-      await db
-        .delete(UserAnswerTable)
-        .where(eq(UserAnswerTable.mockId, interview.mockId));
+      const headers = await buildAuthHeaders();
+      const response = await fetch(`/api/interviews/${encodeURIComponent(interview.mockId)}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers,
+      });
 
-      await db
-        .delete(SpeakSmartAI)
-        .where(eq(SpeakSmartAI.mockId, interview.mockId));
+      if (response.status === 401) {
+        alert("Your session expired. Please sign in again.");
+        return;
+      }
 
-      await db
-        .delete(InterviewSessionTable)
-        .where(
-          and(
-            eq(InterviewSessionTable.mockId, interview.mockId),
-            eq(InterviewSessionTable.userId, user.id)
-          )
-        );
+      if (!response.ok) {
+        throw new Error(`Failed to delete interview (${response.status})`);
+      }
 
       setInterviewList((prev) =>
         prev.filter((item) => item.mockId !== interview.mockId)

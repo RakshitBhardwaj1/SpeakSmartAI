@@ -1,8 +1,5 @@
 "use client";
 import React, { useEffect } from 'react';
-import { db } from "@/utils/db";
-import { InterviewSessionTable } from "@/utils/schema";
-import { eq } from "drizzle-orm";
 import { Lightbulb, WebcamIcon } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,10 +22,20 @@ function StartInterview({ params }) {
     const GetInterviewDetails = async () => {
         try {
             setLoading(true);
-            const result = await db.select().from(InterviewSessionTable).where(eq(InterviewSessionTable.mockId, interviewId));
-            console.log("Interview Details:", result);
-            if (result && result.length > 0) {
-                setInterviewData(result[0]);
+            const response = await fetch(`/api/interviews/${encodeURIComponent(interviewId)}`, {
+                method: 'GET',
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load interview details');
+            }
+
+            const data = await response.json();
+            const interview = data?.interview;
+            console.log("Interview Details:", interview);
+            if (interview) {
+                setInterviewData(interview);
             }
         } catch (error) {
             console.error("Error fetching interview details:", error);

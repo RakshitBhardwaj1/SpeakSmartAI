@@ -6,9 +6,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { db } from "@/utils/db";
-import { UserAnswerTable, InterviewSessionTable } from "@/utils/schema";
-import { eq } from "drizzle-orm";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Star, Home } from "lucide-react";
@@ -25,40 +22,29 @@ function Feedback({ params }) {
 
   useEffect(() => {
     if (interviewId) {
-      fetchFeedback();
-      fetchSessionQuestions();
+      fetchInterviewFeedback();
     }
   }, [interviewId, user]);
 
-  const fetchFeedback = async () => {
+  const fetchInterviewFeedback = async () => {
     setLoading(true);
     try {
-      const result = await db
-        .select()
-        .from(UserAnswerTable)
-        .where(eq(UserAnswerTable.mockId, interviewId));
-      setFeedbackList(result);
+      const response = await fetch(`/api/interviews/${encodeURIComponent(interviewId)}/feedback`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch interview feedback");
+      }
+
+      const data = await response.json();
+      setFeedbackList(data?.feedback || []);
+      setSessionQuestions(data?.sessionQuestions || []);
     } catch (err) {
-      console.error("Error fetching feedback:", err);
+      console.error("Error fetching interview feedback:", err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchSessionQuestions = async () => {
-    try {
-      const result = await db
-        .select()
-        .from(InterviewSessionTable)
-        .where(eq(InterviewSessionTable.mockId, interviewId));
-      if (result && result.length > 0) {
-        const raw = result[0]?.interviewQuestions;
-        const parsed = raw ? JSON.parse(raw) : [];
-        const questions = Array.isArray(parsed) ? parsed : parsed?.questions || [];
-        setSessionQuestions(questions);
-      }
-    } catch (err) {
-      console.error("Error fetching session questions:", err);
     }
   };
 

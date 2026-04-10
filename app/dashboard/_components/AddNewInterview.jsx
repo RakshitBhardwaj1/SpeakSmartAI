@@ -17,9 +17,11 @@ import ResumeUpload from "./ResumeUpload";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 
 function AddNewInterview() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [openDialog, setOpenDialog] = React.useState(false);
   const [jobPosition, setJobPosition] = React.useState("");
   const [jobDescription, setJobDescription] = React.useState("");
@@ -49,8 +51,13 @@ function AddNewInterview() {
     formData.append("experience", experience);
 
     try {
+      const token = await getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const response = await axios.post("/api/generate-interview-questions", formData);
+      const response = await axios.post("/api/generate-interview-questions", formData, {
+        headers,
+        withCredentials: true,
+      });
       
       console.log("✅ Resume and data submitted successfully!");
       console.log("API Response:", response.data);
@@ -87,7 +94,7 @@ function AddNewInterview() {
       const serverError = error?.response?.data;
       alert(
 
-        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}`
+        `❌ Failed to process request.\n${serverError?.error || "Unknown error"}\n${serverError?.details || "Please check your connection and try again."}${serverError?.hint ? `\nHint: ${serverError.hint}` : ""}`
 
       );
     } finally {
