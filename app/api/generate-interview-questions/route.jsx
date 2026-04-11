@@ -207,6 +207,31 @@ function normalizeQuestions(n8nData) {
   return parseTextQuestions(textSource);
 }
 
+function normalizeWebhookUrl(rawValue) {
+  if (!rawValue) return "";
+
+  let value = String(rawValue).trim();
+
+  // Remove accidental wrapping quotes from env values.
+  value = value.replace(/^['"]+|['"]+$/g, "");
+
+  // Auto-correct common protocol typos observed in local setup.
+  if (value.startsWith("tps://")) {
+    value = `https://${value.slice("tps://".length)}`;
+  }
+
+  if (value.startsWith("ttp://")) {
+    value = `http://${value.slice("ttp://".length)}`;
+  }
+
+  // If protocol is omitted, default to https for remote n8n hosts.
+  if (!/^https?:\/\//i.test(value) && /^[^\s/]+\.[^\s/]+\//.test(value)) {
+    value = `https://${value}`;
+  }
+
+  return value;
+}
+
 
 export async function POST(req) {
   try {
@@ -307,11 +332,24 @@ export async function POST(req) {
     }
 
     // Validate n8n webhook URL
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    const n8nWebhookUrl = normalizeWebhookUrl(process.env.N8N_WEBHOOK_URL);
 
     if (!n8nWebhookUrl) {
       return new Response(
         JSON.stringify({ error: "N8N_WEBHOOK_URL is missing" }),
+        { status: 500 }
+      );
+    }
+
+    try {
+      // Ensure URL is valid before calling fetch to avoid opaque "fetch failed" errors.
+      new URL(n8nWebhookUrl);
+    } catch {
+      return new Response(
+        JSON.stringify({
+          error: "N8N webhook URL is invalid",
+          hint: "Set N8N_WEBHOOK_URL to a valid production webhook URL, e.g. https://<host>/webhook/<id>",
+        }),
         { status: 500 }
       );
     }
@@ -377,13 +415,15 @@ export async function POST(req) {
 
     // Call n8n workflow
     let n8nRes;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
       n8nRes = await fetch(n8nWebhookUrl, {
         method: "POST",
         headers: n8nHeaders,
         body: JSON.stringify(n8nPayload),
         cache: "no-store",
-        timeout: 30000,
+        signal: controller.signal,
       });
     } catch (fetchError) {
       console.error("❌ n8n webhook connection failed:", {
@@ -392,20 +432,28 @@ export async function POST(req) {
         code: fetchError?.code,
       });
 
+      const isTimeout = fetchError?.name === "AbortError";
+
       return new Response(
         JSON.stringify({
-          error: "Failed to connect to n8n workflow",
-          message: `Cannot reach n8n at ${n8nWebhookUrl}. Make sure n8n is running.`,
+          error: isTimeout ? "n8n request timed out" : "Failed to connect to n8n workflow",
+          message: isTimeout
+            ? `n8n did not respond within 30s for ${n8nWebhookUrl}.`
+            : `Cannot reach n8n at ${n8nWebhookUrl}. Make sure n8n is running and URL is reachable.`,
           details: fetchError?.message,
           code: fetchError?.code,
         }),
         { status: 503 }
       );
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (!n8nRes.ok) {
       const n8nText = await n8nRes.text();
       const safeDetails = (n8nText || "").slice(0, 2000);
+      const isWebhookNotRegistered =
+        n8nRes.status === 404 && /webhook.+not registered/i.test(safeDetails);
       const looksLikeAuthFailure =
         n8nRes.status === 401 ||
         n8nRes.status === 403 ||
@@ -419,12 +467,18 @@ export async function POST(req) {
 
       return new Response(
         JSON.stringify({
-          error: looksLikeAuthFailure ? "n8n authentication failed" : "n8n webhook failed",
+          error: looksLikeAuthFailure
+            ? "n8n authentication failed"
+            : isWebhookNotRegistered
+              ? "n8n webhook is not registered"
+              : "n8n webhook failed",
           status: n8nRes.status,
           url: n8nWebhookUrl,
           details: safeDetails,
           hint: looksLikeAuthFailure
             ? "Set webhook auth env vars: N8N_WEBHOOK_BEARER_TOKEN or N8N_WEBHOOK_BASIC_USER/N8N_WEBHOOK_BASIC_PASSWORD (or N8N_WEBHOOK_AUTH_HEADER)."
+            : isWebhookNotRegistered
+              ? "Activate the n8n workflow and copy the current production webhook URL from the Webhook node."
             : isWebhookTestUrl && n8nRes.status === 404
               ? "If using /webhook-test/, start a test execution in n8n or switch to production /webhook/ URL."
               : "Verify webhook URL and workflow activation in n8n.",
