@@ -70,14 +70,23 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
 
   const [userAnswer, setUserAnswer] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [lastSpeechNotice, setLastSpeechNotice] = useState('')
   const { getToken } = useAuth()
   const router = useRouter()
   const lastSyncedAnswerRef = useRef('')
+  const lastWarningKeyRef = useRef('')
   const prevRecordingRef = useRef(false)
   const isFinalizingRef = useRef(false)
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
   const audioBlobRef = useRef(null)
+
+  const buildSpeechMetricsSummary = (speechData) => {
+    const overallScore = speechData?.report_card?.overall_score ?? 0
+    const pacingScore = speechData?.report_card?.pacing?.score ?? 'N/A'
+    const expressivenessScore = speechData?.report_card?.expressiveness?.score ?? 'N/A'
+    return `Prosody Score: ${overallScore}/100. Pacing: ${pacingScore}. Tone/Expressiveness: ${expressivenessScore}`
+  }
 
   // Debug props
   useEffect(() => {
@@ -295,53 +304,67 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
 
     try {
       let feedbackResult = null
+      let speechResult = null
+      let speechWarning = null
 
+      if (finalAnswer.length < 10) {
+        speechWarning = 'Speech feedback was skipped because the answer was too short. Please speak a longer answer before stopping.'
+      }
+
+      let geminiResult = null
       if (finalAnswer.length >= 10) {
         // 1. Get textual answer feedback from Gemini
-        const geminiResult = await getFeedbackFromGemini(context.question, finalAnswer)
+        geminiResult = await getFeedbackFromGemini(context.question, finalAnswer)
         
         // 2. Process audio via speech-analysis-api
-        let audioBlob = null;
+        let audioBlob = null
         for (let i = 0; i < 20; i++) {
           if (audioBlobRef.current) {
-            audioBlob = audioBlobRef.current;
-            break;
+            audioBlob = audioBlobRef.current
+            break
           }
           await new Promise(r => setTimeout(r, 50));
         }
 
-        let speechResult = null;
         if (audioBlob) {
           try {
-            const token = await getToken();
+            const token = await getToken()
             if (!token) {
-              toast.error('Authentication required. Please sign in again.');
-              return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', audioBlob, 'recording.webm');
-            console.log("Submitting audio job to Python speech-analysis-api...");
-            const response = await fetch('http://localhost:8000/api/v1/upload', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              body: formData
-            });
-            if (response.ok) {
-              const apiResult = await response.json();
-              if (apiResult.job_id) {
-                speechResult = await pollSpeechResult(apiResult.job_id, token)
-                console.log("Python API async analysis successful");
-              }
+              speechWarning = 'Speech feedback is unavailable because your session expired. Please sign in again.'
             } else {
-              const errorText = await response.text();
-              console.warn('Speech analysis API error: ' + errorText);
+              const formData = new FormData()
+              formData.append('file', audioBlob, 'recording.webm')
+              console.log('Submitting audio job to Python speech-analysis-api...')
+              const response = await fetch('http://localhost:8000/api/v1/upload', {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+                body: formData
+              })
+
+              if (response.ok) {
+                const apiResult = await response.json()
+                if (apiResult.job_id) {
+                  speechResult = await pollSpeechResult(apiResult.job_id, token)
+                  console.log('Python API async analysis successful')
+                } else {
+                  speechWarning = 'Speech feedback is unavailable because the speech service did not return a job id.'
+                }
+              } else {
+                const errorText = await response.text()
+                speechWarning = `Speech feedback is unavailable because speech analysis API returned ${response.status}.`
+                console.warn('Speech analysis API error: ' + errorText)
+              }
             }
           } catch (e) {
-             console.warn("Speech analysis API error:", e);
+            speechWarning = e?.message?.includes('timed out')
+              ? 'Speech feedback is unavailable because speech processing timed out. Please try again with a shorter answer.'
+              : 'Speech feedback is unavailable because the speech analysis service could not be reached.'
+            console.warn('Speech analysis API error:', e)
           }
+        } else {
+          speechWarning = 'Speech feedback is unavailable because no audio recording was captured. Please enable microphone and try again.'
         }
 
         // 3. Combine Gemini textual evaluation with Speech Analysis
@@ -351,22 +374,50 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
             feedback: geminiResult.feedback,
             strengths: geminiResult.strengths || '',
             modelAnswer: geminiResult.modelAnswer
-          };
+          }
 
           if (speechResult) {
-             feedbackResult.speechFeedback = speechResult.feedback || "Audio analyzed successfully.";
-             feedbackResult.speechMetrics = `Prosody Score: ${speechResult.report_card?.overall_score || 0}/100. Pacing: ${speechResult.report_card?.pacing?.score}. Tone/Expressiveness: ${speechResult.report_card?.expressiveness?.score}`;
-             feedbackResult.detailedAnalysis = speechResult;
+            feedbackResult.speechFeedback = speechResult.feedback || 'Audio analyzed successfully.'
+            feedbackResult.speechMetrics = buildSpeechMetricsSummary(speechResult)
+            feedbackResult.detailedAnalysis = speechResult
           }
         } else if (speechResult) {
-           feedbackResult = {
-             rating: 0,
-             feedback: "Could not evaluate textual answer. Speech Analysis: " + (speechResult.feedback || "Audio analyzed successfully."),
-             strengths: `Prosody Score: ${speechResult.report_card?.overall_score || 0}/100`,
-             modelAnswer: context.correctAnswer,
-             detailedAnalysis: speechResult
-           };
+          feedbackResult = {
+            rating: 0,
+            feedback: 'Could not evaluate textual answer. Speech Analysis: ' + (speechResult.feedback || 'Audio analyzed successfully.'),
+            strengths: `Prosody Score: ${speechResult.report_card?.overall_score || 0}/100`,
+            modelAnswer: context.correctAnswer,
+            speechFeedback: speechResult.feedback || 'Audio analyzed successfully.',
+            speechMetrics: buildSpeechMetricsSummary(speechResult),
+            detailedAnalysis: speechResult
+          }
         }
+
+        if (!speechResult && !speechWarning) {
+          speechWarning = 'Speech feedback is unavailable for this answer due to a temporary processing issue.'
+        }
+      }
+
+      if (speechWarning) {
+        if (!feedbackResult) {
+          feedbackResult = {
+            rating: 0,
+            feedback: 'Detailed feedback is not available for this answer yet.',
+            strengths: 'Please retry with a stable connection and microphone access enabled.',
+            modelAnswer: context.correctAnswer,
+          }
+        }
+
+        feedbackResult.speechWarning = speechWarning
+        setLastSpeechNotice(speechWarning)
+
+        const warningKey = `${context.question}:${speechWarning}`
+        if (lastWarningKeyRef.current !== warningKey) {
+          toast.warning(speechWarning)
+          lastWarningKeyRef.current = warningKey
+        }
+      } else {
+        setLastSpeechNotice('')
       }
 
       await upsertAnswer({ answerText: finalAnswer, feedbackResult })
@@ -506,6 +557,12 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
 
       {interimResult && (
         <p className='text-sm text-gray-500 italic'>{interimResult}</p>
+      )}
+
+      {lastSpeechNotice && (
+        <div className='max-w-xl rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800'>
+          {lastSpeechNotice}
+        </div>
       )}
 
       <div className='flex gap-3 flex-wrap justify-center'>
