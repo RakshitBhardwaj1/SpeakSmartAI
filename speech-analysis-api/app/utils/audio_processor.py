@@ -1,3 +1,12 @@
+import io
+import soundfile as sf
+def get_audio_duration(content: bytes, file_extension: str) -> float:
+    """Return duration in seconds for given audio bytes."""
+    try:
+        with sf.SoundFile(io.BytesIO(content)) as f:
+            return f.frames / f.samplerate
+    except Exception:
+        return 0.0
 import librosa
 import numpy as np
 from typing import Tuple

@@ -21,7 +21,7 @@ def init_jobs_table() -> None:
             """
             CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
+                user_id TEXT,
                 status TEXT NOT NULL,
                 result_json TEXT,
                 error TEXT,
@@ -35,6 +35,8 @@ def init_jobs_table() -> None:
 
 def create_job(job_id: str, user_id: str, status: str = "processing") -> None:
     now = datetime.now(timezone.utc).isoformat()
+    # Use 'anonymous' if user_id is None
+    user_id = user_id if user_id is not None else "anonymous"
     with _get_connection() as connection:
         connection.execute(
             """

@@ -289,7 +289,32 @@ function Feedback({ params }) {
                   {/* AI Feedback */}
                   {(() => {
                     const parsed = parseFeedback(item.feedback);
-                    if (!parsed) return null;
+                    if (!parsed) {
+                      if (item.useranswer) {
+                        return (
+                          <div>
+                            <p className="mb-1 font-semibold text-amber-700">Speech Feedback Status</p>
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 leading-relaxed text-amber-800">
+                              Speech feedback is unavailable for this answer. This usually happens when the recording is too short, microphone capture fails, or the speech analysis service is unreachable.
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }
+
+                    const hasSpeechDetails = Boolean(
+                      parsed.speechFeedback ||
+                      parsed.speechMetrics ||
+                      parsed.detailedAnalysis?.graphs
+                    );
+
+                    const speechWarningMessage =
+                      parsed.speechWarning ||
+                      (!hasSpeechDetails && item.useranswer
+                        ? "Speech feedback is unavailable for this answer. This usually happens when recording is too short, microphone capture fails, or the speech analysis service is unreachable."
+                        : null);
+
                     return (
                       <>
                         {parsed.feedback && (
@@ -305,6 +330,14 @@ function Feedback({ params }) {
                             <p className="mb-1 font-semibold text-purple-600">Strengths</p>
                             <p className="rounded-lg border border-purple-200 bg-purple-50 p-3 leading-relaxed text-slate-700">
                               {parsed.strengths}
+                            </p>
+                          </div>
+                        )}
+                        {speechWarningMessage && (
+                          <div>
+                            <p className="mb-1 font-semibold text-amber-700">Speech Feedback Status</p>
+                            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 leading-relaxed text-amber-800">
+                              {speechWarningMessage}
                             </p>
                           </div>
                         )}

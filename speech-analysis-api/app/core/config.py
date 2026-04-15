@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     admin_emails_csv: str = os.getenv("ADMIN_EMAILS", "")
     
     # File Upload Configuration
-    max_upload_size: int = 10 * 1024 * 1024  # 10MB
+    max_upload_size: int = 50 * 1024 * 1024  # 50MB (increase upload size limit)
+        # Maximum allowed audio duration in seconds (set high, can override in .env)
+    max_audio_duration: int = int(os.getenv("MAX_AUDIO_DURATION", 900))  # 15 minutes
     upload_directory: str = "./uploads"
     max_filename_length: int = 255
     processing_upload_directory: str = "./uploads/processing"
@@ -56,6 +58,11 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+
+    # Usage:
+    # To override max_upload_size or max_audio_duration, add to your .env:
+    # MAX_UPLOAD_SIZE=52428800
+    # MAX_AUDIO_DURATION=900
 
     @property
     def cors_allowed_origins(self) -> list[str]:

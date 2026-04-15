@@ -23,8 +23,8 @@ class SpeechAnalysisService:
         )
         self.graph_service = GraphService()
     
-    def analyze_audio(self, file_path: str) -> Dict[str, Any]:
-        """Complete audio analysis pipeline"""
+    def analyze_audio(self, file_path: str, model_answer: str = None) -> Dict[str, Any]:
+        """Complete audio analysis pipeline with content feedback support"""
         print(f"\n=== Starting Analysis for {file_path} ===")
         
         # 1. Load audio
@@ -76,9 +76,12 @@ class SpeechAnalysisService:
             sr, hop_length, total_duration
         )
         
-        # 8. Generate LLM feedback
+        # 8. Generate LLM feedback (speech + content)
         print("8. Generating LLM feedback...")
-        feedback = self.llm_service.generate_feedback(transcript, report_card)
+        if model_answer:
+            feedback = self.llm_service.generate_combined_feedback(transcript, model_answer, report_card)
+        else:
+            feedback = self.llm_service.generate_feedback(transcript, report_card)
         
         # 9. Generate graphs
         print("9. Generating graphs...")

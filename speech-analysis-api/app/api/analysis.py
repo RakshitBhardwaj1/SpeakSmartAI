@@ -1,10 +1,11 @@
+
 import os
 import traceback
 import uuid
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, Form
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
@@ -15,8 +16,21 @@ from app.services.analysis import SpeechAnalysisService
 from app.services.job_store import create_job, get_job, update_job
 from app.services.metrics import jobs_failed, jobs_total, job_duration
 
-
+# Router must be defined before use
 router = APIRouter(prefix="/api/v1", tags=["Analysis"])
+
+@router.get("/feedback/{job_id}")
+@limiter.limit("30/minute")
+async def get_feedback_only(request: Request, job_id: str):
+    """Return only the feedback text for a completed analysis job."""
+    _ = request
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job["status"] != "completed" or not job["result"]:
+        return {"job_id": job_id, "status": job["status"], "feedback": None}
+    feedback = job["result"].get("feedback")
+    return {"job_id": job_id, "status": job["status"], "feedback": feedback}
 
 # Initialize service
 analysis_service = SpeechAnalysisService()
@@ -71,8 +85,15 @@ async def _analyze_audio_file(file: UploadFile):
 
     if len(content) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail=f"File too large. Max size: {settings.max_upload_size / 1024 / 1024}MB")
-    
+
     file_extension = Path(normalized_filename).suffix or ".wav"
+
+    # Optional: Check audio duration (requires decoding audio)
+    from app.utils.audio_processor import get_audio_duration
+    duration = get_audio_duration(content, file_extension)
+    if duration > settings.max_audio_duration:
+        raise HTTPException(status_code=413, detail=f"Audio too long. Max duration: {settings.max_audio_duration // 60} minutes")
+
     processing_dir = Path(settings.processing_upload_directory)
     processing_dir.mkdir(parents=True, exist_ok=True)
 
@@ -83,10 +104,10 @@ async def _analyze_audio_file(file: UploadFile):
     return str(temp_path)
 
 
-def _process_audio_job(job_id: str, file_path: str) -> None:
+def _process_audio_job(job_id: str, file_path: str, model_answer: str = None) -> None:
     started_at = time.time()
     try:
-        result = analysis_service.analyze_audio(file_path)
+        result = analysis_service.analyze_audio(file_path, model_answer=model_answer)
         update_job(job_id=job_id, status="completed", result=result)
     except Exception as exc:
         traceback.print_exc()
@@ -101,14 +122,15 @@ def _process_audio_job(job_id: str, file_path: str) -> None:
 
 async def _submit_audio_job(
     file: UploadFile,
-    user: AuthenticatedUser,
     background_tasks: BackgroundTasks,
+    model_answer: str = None,
 ) -> JSONResponse:
     file_path = await _analyze_audio_file(file)
     job_id = str(uuid.uuid4())
 
-    create_job(job_id=job_id, user_id=user.user_id, status="processing")
-    background_tasks.add_task(_process_audio_job, job_id, file_path)
+    # No user_id stored, open access
+    create_job(job_id=job_id, user_id=None, status="processing")
+    background_tasks.add_task(_process_audio_job, job_id, file_path, model_answer)
 
     return JSONResponse(
         content={
@@ -123,12 +145,12 @@ async def _submit_audio_job(
 async def analyze_audio(
     request: Request,
     file: UploadFile = File(...),
+    model_answer: str = Form(None),
     background_tasks: BackgroundTasks = None,
-    user: AuthenticatedUser = Depends(get_current_user),
 ):
-    """Submit audio for async analysis and return job metadata."""
+    """Submit audio and model answer for async analysis and return job metadata."""
     _ = request
-    return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
+    return await _submit_audio_job(file=file, background_tasks=background_tasks, model_answer=model_answer)
 
 
 @router.post("/upload")
@@ -137,25 +159,22 @@ async def upload_audio(
     request: Request,
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
-    user: AuthenticatedUser = Depends(get_current_user),
 ):
     """Alias endpoint for async audio job submission."""
     _ = request
-    return await _submit_audio_job(file=file, user=user, background_tasks=background_tasks)
+    return await _submit_audio_job(file=file, background_tasks=background_tasks)
 
 
 @router.get("/result/{job_id}")
 @limiter.limit("30/minute")
-async def get_analysis_result(request: Request, job_id: str, user: AuthenticatedUser = Depends(get_current_user)):
+async def get_analysis_result(request: Request, job_id: str):
     """Fetch status/result for a previously submitted analysis job."""
     _ = request
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if job["user_id"] != user.user_id and user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
-
+    # No user check, open access
     response = {
         "job_id": job["id"],
         "status": job["status"],
