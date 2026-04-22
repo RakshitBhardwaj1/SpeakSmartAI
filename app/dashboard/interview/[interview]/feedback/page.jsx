@@ -286,38 +286,63 @@ function Feedback({ params }) {
                     </div>
                   )}
 
-                  {/* AI Feedback */}
+                  {/* AI Feedback - Updated for JSON fields */}
                   {(() => {
                     const parsed = parseFeedback(item.feedback);
-                    if (!parsed) {
-                      if (item.useranswer) {
-                        return (
-                          <div>
-                            <p className="mb-1 font-semibold text-amber-700">Speech Feedback Status</p>
-                            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 leading-relaxed text-amber-800">
-                              Speech feedback is unavailable for this answer. This usually happens when the recording is too short, microphone capture fails, or the speech analysis service is unreachable.
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }
+                    if (!parsed) return null;
 
-                    const hasSpeechDetails = Boolean(
-                      parsed.speechFeedback ||
-                      parsed.speechMetrics ||
-                      parsed.detailedAnalysis?.graphs
-                    );
-
-                    const speechWarningMessage =
-                      parsed.speechWarning ||
-                      (!hasSpeechDetails && item.useranswer
-                        ? "Speech feedback is unavailable for this answer. This usually happens when recording is too short, microphone capture fails, or the speech analysis service is unreachable."
-                        : null);
-
+                    // Render new detailed feedback fields if present
                     return (
                       <>
-                        {parsed.feedback && (
+                          {/* Paragraph Feedback: Combine hook, strength, focus_area, drill */}
+                          {(parsed.hook || parsed.strength || parsed.focus_area || parsed.drill) && (
+                            <div>
+                              <p className="mb-1 font-semibold text-indigo-700">📝 Paragraph Feedback</p>
+                              <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 leading-relaxed text-slate-700">
+                                {[
+                                  parsed.hook ? parsed.hook : null,
+                                  parsed.strength ? ` ${parsed.strength}` : null,
+                                  parsed.focus_area ? ` ${parsed.focus_area}` : null,
+                                  parsed.drill ? ` ${parsed.drill}` : null
+                                ].filter(Boolean).join(' ')}
+                              </div>
+                            </div>
+                          )}
+                        {parsed.hook && (
+                          <div>
+                            <p className="mb-1 font-semibold text-blue-700">🌟 The Hook</p>
+                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 leading-relaxed text-slate-700">
+                              {parsed.hook}
+                            </div>
+                          </div>
+                        )}
+                        {parsed.strength && (
+                          <div>
+                            <p className="mb-1 font-semibold text-green-700">🏆 Key Strength</p>
+                            <div className="rounded-lg border border-green-200 bg-green-50 p-4 leading-relaxed text-slate-700">
+                              {parsed.strength}
+                            </div>
+                          </div>
+                        )}
+                        {parsed.focus_area && (
+                          <div>
+                            <p className="mb-1 font-semibold text-orange-700">🎯 Primary Focus Area</p>
+                            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 leading-relaxed text-slate-700">
+                              {parsed.focus_area}
+                            </div>
+                          </div>
+                        )}
+                        {parsed.drill && (
+                          <div>
+                            <p className="mb-1 font-semibold text-purple-700">🏋️ Actionable Drill</p>
+                            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 leading-relaxed text-slate-700">
+                              {parsed.drill}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback to old fields if present */}
+                        {parsed.feedback && !parsed.hook && (
                           <div>
                             <p className="mb-1 font-semibold text-blue-600">AI Feedback</p>
                             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 leading-relaxed text-slate-700">
@@ -325,7 +350,7 @@ function Feedback({ params }) {
                             </div>
                           </div>
                         )}
-                        {parsed.strengths && (
+                        {parsed.strengths && !parsed.strength && (
                           <div>
                             <p className="mb-1 font-semibold text-purple-600">Strengths</p>
                             <p className="rounded-lg border border-purple-200 bg-purple-50 p-3 leading-relaxed text-slate-700">
@@ -333,11 +358,12 @@ function Feedback({ params }) {
                             </p>
                           </div>
                         )}
-                        {speechWarningMessage && (
+                        {/* Speech/metrics/graphs rendering unchanged */}
+                        {parsed.speechWarning && (
                           <div>
                             <p className="mb-1 font-semibold text-amber-700">Speech Feedback Status</p>
                             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 leading-relaxed text-amber-800">
-                              {speechWarningMessage}
+                              {parsed.speechWarning}
                             </p>
                           </div>
                         )}

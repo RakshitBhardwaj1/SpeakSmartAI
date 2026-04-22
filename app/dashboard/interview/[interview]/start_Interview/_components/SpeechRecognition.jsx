@@ -41,6 +41,26 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
       throw new Error('Invalid rating output')
     }
 
+    const newFields = ['hook', 'strength', 'focus_area', 'drill', 'modelAnswer']
+    let isValidNew = true
+    for (const field of newFields) {
+      if (typeof payload[field] !== 'string') {
+        isValidNew = false;
+        break;
+      }
+    }
+
+    if (isValidNew) {
+      return {
+        rating,
+        hook: payload.hook.trim(),
+        strength: payload.strength.trim(),
+        focus_area: payload.focus_area.trim(),
+        drill: payload.drill.trim(),
+        modelAnswer: payload.modelAnswer.trim(),
+      }
+    }
+
     const requiredFields = ['feedback', 'strengths', 'modelAnswer']
     for (const field of requiredFields) {
       if (typeof payload[field] !== 'string' || payload[field].trim().length === 0) {
@@ -129,8 +149,10 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
     Please provide your response in the following JSON format ONLY (no additional text, no markdown):
     {
       "rating": <number between 1-10>,
-      "feedback": "<3-5 line constructive feedback highlighting areas of improvement>",
-      "strengths": "<mention 1-2 key strengths of the answer>",
+      "hook": "<A brief empathetic summary tailored to the actual answer's situation>",
+      "strength": "<Explain why their approach or point was good in one area>",
+      "focus_area": "<Explain the impact of one specific weakness in their answer. If none, praise their best attribute>",
+      "drill": "<Provide ONE specific, concrete mental or technical drill to improve that exact focus area.>",
       "modelAnswer": "<a concise ideal model answer to the question, 2-4 sentences>"
     }
 
@@ -225,7 +247,7 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
   }
 
   const pollSpeechResult = async (jobId, token) => {
-    const maxAttempts = 45
+    const maxAttempts = 90
     const delayMs = 2000
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -348,6 +370,10 @@ function SpeechRecognition({ interviewQuestions = [], activeQuestionIndex = 0, o
         if (geminiResult) {
           feedbackResult = {
             rating: geminiResult.rating,
+            hook: geminiResult.hook,
+            strength: geminiResult.strength,
+            focus_area: geminiResult.focus_area,
+            drill: geminiResult.drill,
             feedback: geminiResult.feedback,
             strengths: geminiResult.strengths || '',
             modelAnswer: geminiResult.modelAnswer
