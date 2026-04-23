@@ -444,20 +444,20 @@ export async function POST(req) {
 
     let questions = normalizeQuestions(n8nData);
     // Fallback: If no questions generated, use popular interview questions
-    if (!questions || questions.length === 0) {
-      questions = [
-        { id: 1, question: "Can you walk me through your resume?", category: "general" },
-{ id: 2, question: "What motivates you to perform well?", category: "general" },
-{ id: 3, question: "What is your biggest achievement so far?", category: "general" },
-{ id: 4, question: "How do you prioritize your tasks?", category: "general" },
-{ id: 5, question: "Tell me about a mistake you made and what you learned from it.", category: "general" },
-{ id: 6, question: "How do you handle feedback or criticism?", category: "general" },
-{ id: 7, question: "What skills are you currently improving?", category: "general" },
-{ id: 8, question: "Describe your ideal work environment.", category: "general" },
-{ id: 9, question: "How do you manage deadlines?", category: "general" },
-{ id: 10, question: "What makes you different from other candidates?", category: "general" },
-      ];
-    }
+//     if (!questions || questions.length === 0) {
+//       questions = [
+//         { id: 1, question: "Can you walk me through your resume?", category: "general" },
+// { id: 2, question: "What motivates you to perform well?", category: "general" },
+// { id: 3, question: "What is your biggest achievement so far?", category: "general" },
+// { id: 4, question: "How do you prioritize your tasks?", category: "general" },
+// { id: 5, question: "Tell me about a mistake you made and what you learned from it.", category: "general" },
+// { id: 6, question: "How do you handle feedback or criticism?", category: "general" },
+// { id: 7, question: "What skills are you currently improving?", category: "general" },
+// { id: 8, question: "Describe your ideal work environment.", category: "general" },
+// { id: 9, question: "How do you manage deadlines?", category: "general" },
+// { id: 10, question: "What makes you different from other candidates?", category: "general" },
+//       ];
+//     }
     const mockId = `session-${Date.now()}`;
     const timestamp = new Date().toISOString();
 
